@@ -60,7 +60,8 @@ sjstats::r2(mod_Int_rI)
 
 # ------ 3) Follow up analyses  ---------------------------------
 bi_mod_emms <- emmeans(mod_Int_rI, pairwise ~ Trial_Type | Block, 
-        type='response', adjust='bonferroni')
+        type = 'response', 
+        adjust = 'bonferroni')
 
 # --- Estimated probability ---
 as.data.frame(bi_mod_emms$emmeans)
