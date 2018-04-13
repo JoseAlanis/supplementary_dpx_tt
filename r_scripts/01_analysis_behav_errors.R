@@ -59,6 +59,23 @@ sjstats::r2(mod_Int_rI)
 
 
 # ------ 3) Follow up analyses  ---------------------------------
+# --- Trial type estimates ----
+bi_mod_emms_tt <- emmeans(mod_Int_rI, pairwise ~ Trial_Type, 
+                          type = 'response', 
+                          adjust = 'bonferroni')
+
+# --- Estimated probability ---
+as.data.frame(bi_mod_emms_tt$emmeans)
+# --- Pairwise contrasts ---
+bi_mod_emms_tt$contrasts
+as.data.frame(bi_mod_emms_tt$contrasts)
+# Compute CIs
+mutate(as.data.frame(bi_mod_emms_tt$contrasts), 
+       LCL = odds.ratio - SE * 1.96, 
+       UCL = odds.ratio + SE * 1.96)
+
+
+# --- Trial type by block ----
 bi_mod_emms <- emmeans(mod_Int_rI, pairwise ~ Trial_Type | Block, 
         type = 'response', 
         adjust = 'bonferroni')
