@@ -38,13 +38,13 @@ contrasts(all_data$Trial_Type) <- contr.sum(4); contrasts(all_data$Trial_Type)
 # ------ 2) Set up and fit the model  ---------------------------
 mod_Int <- glmer(Error_vs_Correct ~ Trial_Type*Block + (1|ID), 
                  family = binomial(link = 'logit'), data = all_data, 
-                  control = glmerControl(optimizer="bobyqa"))
+                  control = glmerControl(optimizer="bobyqa"), nAGQ = 20)
 Anova(mod_Int, type = 3)
 summary(mod_Int)
 
 mod_Int_rI <- glmer(Error_vs_Correct ~ Trial_Type*Block + (1|ID/Trial_Type), 
                  family = binomial(link = 'logit'), data = all_data, 
-                 control = glmerControl(optimizer="bobyqa"))
+                 control = glmerControl(optimizer="bobyqa"), nAGQ = 20)
 Anova(mod_Int_rI, type = 3)
 summary(mod_Int_rI)
 
@@ -63,6 +63,8 @@ sjstats::r2(mod_Int_rI)
 bi_mod_emms_tt <- emmeans(mod_Int_rI, pairwise ~ Trial_Type, 
                           type = 'response', 
                           adjust = 'bonferroni')
+
+
 
 # --- Estimated probability ---
 as.data.frame(bi_mod_emms_tt$emmeans)
