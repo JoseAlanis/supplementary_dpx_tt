@@ -23,7 +23,7 @@ load('~/Documents/Experiments/dpx_tt/OLD_STUFF/R_FRAMES/INDEX_Behavioural/Data_f
 # ------ 1) Descriptive statistics  -----------------------------
 as.data.frame( all_data %>% group_by(Reaction, ID) %>% 
                  summarise(S = sum(!is.na(Error_vs_Correct))) %>% 
-                 summarise(M = mean(S), SD=sd(S), Min = min(S), Max = max(S) ))  
+                 summarise(M = mean(S), SD = sd(S), Min = min(S), Max = max(S) ))  
 
 as.data.frame( all_data %>% group_by(Reaction, Trial_Type, ID) %>% 
                  summarise(S = sum(!is.na(Error_vs_Correct))) %>% 
@@ -60,7 +60,8 @@ sjstats::r2(mod_Int_rI)
 
 # ------ 3) Follow up analyses  ---------------------------------
 # --- Trial type estimates ----
-bi_mod_emms_tt <- emmeans(mod_Int_rI, pairwise ~ Trial_Type, 
+bi_mod_emms_tt <- emmeans(mod_Int_rI, 
+                          pairwise ~ Trial_Type, 
                           type = 'response', 
                           adjust = 'bonferroni')
 
@@ -78,7 +79,8 @@ mutate(as.data.frame(bi_mod_emms_tt$contrasts),
 
 
 # --- Trial type by block ----
-bi_mod_emms <- emmeans(mod_Int_rI, pairwise ~ Trial_Type | Block, 
+bi_mod_emms <- emmeans(mod_Int_rI, 
+                       pairwise ~ Trial_Type | Block, 
         type = 'response', 
         adjust = 'bonferroni')
 
