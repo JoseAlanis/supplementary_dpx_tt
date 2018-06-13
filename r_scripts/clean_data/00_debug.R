@@ -20,8 +20,3 @@ for (i in 1:32) {
 
 # ----- Save data
 write.table(temp, './meta/n_segments.txt')
-
-
-
-
-
