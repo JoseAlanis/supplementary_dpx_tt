@@ -1,5 +1,5 @@
 ##### ##### #####     Analysis scrips for Alanis et al., 2018   ##### ##### #####
-#                          Load EGG data for analysis
+#                          Check number of segments
 #
 
 setwd('~/Documents/Experiments/dpx_tt/')
