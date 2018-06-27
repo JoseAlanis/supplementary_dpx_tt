@@ -3,7 +3,7 @@
 #                                 error data
 
 # Get helper functions
-source('./Documents/GitHub/Supplementary_Soc_ERN/R_Functions/getPacks.R')
+source('./R_Functions/getPacks.R')
 #source('./Documents/GitHub/Supplementary_Soc_ERN/R_Functions/stdResid.R')
 #source('./Documents/GitHub/Supplementary_Soc_ERN/R_Functions/overDisp.R')
 
@@ -89,4 +89,3 @@ as.data.frame(bi_mod_emms$emmeans)
 # --- Pairwise contrasts ---
 bi_mod_emms$contrasts
 as.data.frame(bi_mod_emms$contrasts)
-
