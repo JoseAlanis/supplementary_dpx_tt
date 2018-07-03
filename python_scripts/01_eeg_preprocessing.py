@@ -7,7 +7,6 @@ This is a temporary script file.
 
 import os
 
-
 #import numpy as np
 import mne
 from mne.preprocessing import ICA
