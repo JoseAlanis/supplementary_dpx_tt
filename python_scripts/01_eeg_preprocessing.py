@@ -6,12 +6,15 @@ This is a temporary script file.
 """
 
 import os
-os.chdir('/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/')
+
 
 #import numpy as np
 import mne
 from mne.preprocessing import ICA
 from mne.preprocessing import create_eog_epochs
+
+# Set working directoy
+os.chdir('/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/')
 
 #%% READ IN THE DATA
 
