@@ -142,14 +142,14 @@ evs_blocks = mne.find_events(raw_blocks,
 # --- 8) CHECK FOR INCONSISTENCIES ------------------------
 # Run this part in terminal
 raw_blocks.plot(n_channels=66,
-                scalings=dict(eeg=1e-4),
+                scalings=dict(eeg=5e-5),
                 events=evs_blocks)
 
 # --- 9) FILTER THE DATA ----------------------------------
-raw.filter(0.1, 50, fir_design='firwin')
+raw_blocks.filter(0.1, 50, fir_design='firwin')
 
 # --- 11) RE-REFERENCE TO AVERAGE OF 64 ELECTRODES  -------
-raw.set_eeg_reference(ref_channels='average',
+raw_blocks.set_eeg_reference(ref_channels='average',
                       projection=False)
 
 
@@ -157,10 +157,10 @@ raw.set_eeg_reference(ref_channels='average',
 n_components = 25
 method = 'extended-infomax'
 decim = None
-reject = None
+reject = dict(eeg=3e-4)
 
 # Pick electrodes to use
-picks = mne.pick_types(raw.info,
+picks = mne.pick_types(raw_blocks.info,
                        meg=False,
                        eeg=True,
                        eog=False,
@@ -170,9 +170,92 @@ picks = mne.pick_types(raw.info,
 ica = ICA(n_components=n_components,
           method=method)
 # Fit ICA
-ica.fit(raw.copy().filter(1, 50),
+ica.fit(raw_blocks.copy().filter(1, 50),
         picks=picks,
         reject=reject)
 
 # Plot components
 ica.plot_components()
+
+
+# # --- 13 ADVANCED ARTIFACT REJECTION ----------------------
+# # Create EOG epochs
+# eog_average = create_eog_epochs(raw_blocks,
+#                                 reject=reject,
+#                                 picks=picks).average()
+# # Get single EOG trials
+# eog_epochs = create_eog_epochs(raw_blocks,
+#                                reject=reject)
+#
+# # Find via correlation
+# eog_inds, scores = ica.find_bads_eog(eog_epochs)
+#
+# # look at r scores of components
+# ica.plot_scores(scores, exclude=eog_inds)
+#
+# # We can see that only one component is highly correlated and that this
+# # component got detected by our correlation analysis (red).
+# ica.plot_sources(eog_average,
+#                  exclude=eog_inds)
+
+new_events = evs_blocks.copy()
+temp_cue = 0
+valid = True
+
+
+for i in range(new_events[:, 2].size):
+    # FIRST STEP: temp_cue == 0 indicates we are looking for 'cue stimuli'.
+    # (i.e., events in {70, 71, 72, 73, 74, 75}.
+    if temp_cue == 0:
+        # event 70 is an 'A cue'
+        if new_events[:, 2][i] == 70:
+            # 'A cue' was found; move on
+            temp_cue = 1
+        # events 71, 72, 73, 74, 75 are 'B cues'.
+        elif new_events[:, 2][i] in {71, 72, 73, 74, 75}:
+            # 'B cue' was found; move on
+            temp_cue = 2
+        continue
+    # SECOND STEP: look for 'probe stimuli' (temp_cue > 0)
+    elif temp_cue == 1:
+        # cues followed by wrong key presses (events 112 & 113)
+        # should be marked as invalid
+        if new_events[:, 2][i] in {112, 113}:
+            valid = False
+            continue
+        if valid is True:
+            if new_events[:, 2][i] == 76:
+                new_events[:, 2][i] = 1
+                # Set the temp_cue back to 0.
+            elif new_events[:, 2][i] in {77, 78, 79, 80, 81}:
+                new_events[:, 2][i] = 3
+                # Set the temp_cue back to 0.
+            temp_cue = 0
+        elif valid is False:
+            if new_events[:, 2][i] == 76:
+                new_events[:, 2][i] = 11
+                # Set the temp_cue back to 0.
+            elif new_events[:, 2][i] in {77, 78, 79, 80, 81}:
+                new_events[:, 2][i] = 31
+                # Set the temp_cue back to 0.
+            temp_cue = 0
+            valid = True
+    elif temp_cue == 2:
+        # cues followed by wrong key presses (events 112 & 113)
+        # should be marked as invalid
+        if new_events[:, 2][i] in {112, 113}:
+            valid = False
+            continue
+        if valid is True:
+            if new_events[:, 2][i] == 76:
+                new_events[:, 2][i] = 2
+            elif new_events[:, 2][i] in {77, 78, 79, 80, 81}:\
+                new_events[:, 2][i] = 4
+            temp_cue = 0
+        elif valid is False:
+            if new_events[:, 2][i] == 76:
+                new_events[:, 2][i] = 21
+            elif new_events[:, 2][i] in {77, 78, 79, 80, 81}:
+                new_events[:, 2][i] = 41
+            temp_cue = 0
+            valid = True
