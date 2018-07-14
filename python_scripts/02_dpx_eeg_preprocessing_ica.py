@@ -155,10 +155,10 @@ for i in range(new_evs[:, 2].size):
             continue
 
 
-if any(t == 11 for t in new_evs[:, 2]):
-    event_id = {'Correct A': 1, 'Correct B': 2,
-                'Incorrect A': 11, 'Incorrect B': 22,
-                'Invalid A': 111, 'Invalid B': 222}
+# if any(t == 11 for t in new_evs[:, 2]):
+#     event_id = {'Correct A': 1, 'Correct B': 2,
+#                 'Incorrect A': 11, 'Incorrect B': 22,
+#                 'Invalid A': 111, 'Invalid B': 222}
 
 event_id = {'Correct A': 1, 'Correct B': 2,
             'Incorrect A': 11, 'Incorrect B': 22,
