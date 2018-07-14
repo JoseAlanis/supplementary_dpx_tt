@@ -3,6 +3,7 @@
 # --- Python 3.6.2
 #
 # --- EEG prepossessing - DPX TT
+# --- Artifact detection, interpolate bad channels, extract block data
 # --- Version Jul 2018
 
 # ==================================================================================================
