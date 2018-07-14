@@ -159,12 +159,12 @@ print(len(evs_blocks[(evs_blocks[:, 2] >= 70) &
                      (evs_blocks[:, 2] <= 75), 0]), 'events found.')
 
 # --- 8) REJECT BAD CHANNELS IF FOUND --------------------- UNCOMMENT SECTION
-# Mark as bad
-raw_blocks.info['bads'] = ['F5']
-# Interpolate bads
-raw_blocks.interpolate_bads(reset_bads=True,
-                            verbose=False,
-                            mode='accurate')
+# # Mark as bad
+# raw_blocks.info['bads'] = ['F5']
+# # Interpolate bads
+# raw_blocks.interpolate_bads(reset_bads=True,
+#                             verbose=False,
+#                             mode='accurate')
 
 
 # --- 9) APPLY FILTER TO DATA -----------------------------
