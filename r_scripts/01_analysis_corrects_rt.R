@@ -4,6 +4,7 @@
 # --- script version: Wed Nov 14 12:02:01 2018"
 # --- content: analyse behavioral data
 
+
 # --- 1) Run first, then move on to anylsis section ----------------------------
 # Set working directory
 
@@ -40,6 +41,7 @@ set_path <- function() {
 
 # Set working deirectory
 set_path()
+
 
 # --- 2) Define workflow funktions  --------------------------------------------
 # Source function for fast requiring and installing packages
@@ -120,7 +122,7 @@ n_corrects <- corrects %>%
 tab_df(data.frame(n_corrects), file = './results/tables/n_corrects.html')
 
 
-# --- 5) Winsorise RT ----------------------------------------------------------
+# --- 6) Winsorise RT ----------------------------------------------------------
 # Winsorise
 corrects <- corrects %>% 
   group_by(id, block, trial_type) %>%
@@ -161,7 +163,7 @@ hist(corrects$win_rt,
 dev.off()
 
 
-# --- 6) Analyse RT ------------------------------------------------------------
+# --- 7) Analyse RT ------------------------------------------------------------
 # # Only keep trials with RTs > 100
 # corrects <- corrects %>% filter(rt >= 100)
 
@@ -234,7 +236,7 @@ tab_df(round(amod, 4),
        file = './results/tables/anova_rt.html')
 
 
-# --- 7) Plot results ------------------------------------------------------------
+# --- 8) Plot results ------------------------------------------------------------
 # Quick interaction plot
 emmip(log_mod_rt0,  block ~ trial_type, CIs = T, type = 'response')
 
@@ -248,6 +250,7 @@ emmeans(log_mod_rt0,  pairwise ~ block | trial_type,
 rt_emmeans <- emmeans(log_mod_rt0,  pairwise ~ block | trial_type,
                       transform = 'response', 
                       lmer.df = 'kenward-roger'); rt_emmeans
+
 
 # Create interaction plot
 pd = position_dodge(.25)
