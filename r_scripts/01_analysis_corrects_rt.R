@@ -235,6 +235,9 @@ tab_df(round(amod, 4),
        title = 'Anova table for linear mixed effects regression analysis of logRT',
        file = './results/tables/anova_rt.html')
 
+# Save model summary
+tab_model(log_mod_rt0)
+
 
 # --- 8) Plot results ------------------------------------------------------------
 # Quick interaction plot
