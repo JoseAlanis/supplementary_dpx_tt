@@ -160,5 +160,8 @@ all_rt$id <- as.factor(all_rt$id); levels(all_rt$id)
 
 
 # --- 6) Save data frame -------------------------------------------------------
-write.table(all_rt, './data_frames/correct_rt.txt', row.names = F, sep = '\t')
-save(all_rt, file="./data_frames/corrects_rt.Rda")
+# Rename data frame
+corrects <- all_rt
+
+write.table(corrects, './data_frames/correct_rt.txt', row.names = F, sep = '\t')
+save(corrects, file="./data_frames/corrects_rt.Rda")
