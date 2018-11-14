@@ -236,7 +236,9 @@ tab_df(round(amod, 4),
        file = './results/tables/anova_rt.html')
 
 # Save model summary
-tab_model(log_mod_rt0)
+tab_model(log_mod_rt0,
+          title = 'Estimates of linear mixed effects regression analysis of logRT',
+          file = './results/tables/summary_rt.html')
 
 
 # --- 8) Plot results ------------------------------------------------------------
