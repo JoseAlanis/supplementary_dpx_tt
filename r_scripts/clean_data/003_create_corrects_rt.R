@@ -1,8 +1,8 @@
 # --- author: jose c. garcia alanis
 # --- encoding: utf-8
 # --- r version: 3.4.4 (2018-03-15) -- "Someone to Lean On"
-# --- content: get correct reactions data
-# --- version: "Mon Sep 24 10:40:32 2018"
+# --- content: create corrects data frame for analysis
+# --- version: Fri Nov 16 12:11:33 2018
 
 # --- 1) Run first, then move on to anylsis section ----------------------------
 # Interactive setting of working directory
@@ -36,7 +36,7 @@ set_path <- function() {
 }
 
 
-# Set working deirectory
+# Set working directory
 set_path()
 
 
@@ -131,37 +131,36 @@ for (i in 1:32) {
   
 }
 
-# --- 5) Rename levels ---------------------------------------------------------
-getPacks('plyr')
 
-# Trial type
+# --- 5) Rename variable levels and rearrange them -----------------------------
+# Recode trial type
 all_rt$trial_type <- as.factor(all_rt$trial_type); levels(all_rt$trial_type)
 all_rt$trial_type <- plyr::revalue(all_rt$trial_type, c('1' = 'AX',
                                                         '2' = 'BX',
                                                         '3' = 'AY',
                                                         '4' = 'BY'))
-# Rearrange
+# Rearrange levels
 all_rt$trial_type <- factor(all_rt$trial_type, 
                             levels(all_rt$trial_type) [c(1, 3, 2, 4)]); levels(all_rt$trial_type)
 
-# Reaction
+# Recode teaction
 all_rt$reaction <- factor(all_rt$reaction); levels(all_rt$reaction)
-# Rearrange
+# Rearrange levels
 all_rt$reaction <- plyr::revalue(all_rt$reaction, c('hit' = 'Correct'))
 
-# Block
+# Recode block
 all_rt$block <- as.factor(all_rt$block); levels(all_rt$block)
-# Rearrange
+# Rearrange levels
 all_rt$block <- plyr::revalue(all_rt$block, c('1' = 'Practice',
                                               '2' = 'Performance'))
 
-# ID
+# ID to factor
 all_rt$id <- as.factor(all_rt$id); levels(all_rt$id)
 
 
 # --- 6) Save data frame -------------------------------------------------------
 # Rename data frame
 corrects <- all_rt
-
+# Save data frame
 write.table(corrects, './data_frames/correct_rt.txt', row.names = F, sep = '\t')
 save(corrects, file="./data_frames/corrects_rt.Rda")
