@@ -73,7 +73,7 @@ rm(set_path)
 
 # Packages
 packs <- c('dplyr',
-           'ggplot2', 'viridis',
+           'ggplot2', 'viridis', 'gridExtra',
            'psych',
            'sjPlot')
 # Load them
@@ -164,18 +164,13 @@ hist(corrects$win_rt,
 dev.off()
 
 
-# --- 7) Analyse RT ------------------------------------------------------------
+# --- 7) Analyse single trials' RT ---------------------------------------------
 # # Only keep trials with RTs > 100
 # corrects <- corrects %>% filter(rt >= 100)
 
-# Summarise RT by id, block and trial type
-corrects_mean <- corrects %>% 
-  group_by(id, block, trial_type) %>% 
-  summarise(mean_rt = mean(win_rt))
-
 # Effect code cathegorical variables
-contrasts(corrects$block) <-  contr.sum(2); contrasts(corrects$block)
-contrasts(corrects$trial_type) <-  contr.sum(4); contrasts(corrects$trial_type)
+contrasts(corrects$block) <-  contr.treatment(2, base = 1); contrasts(corrects$block)
+contrasts(corrects$trial_type) <-  contr.treatment(4, base = 1); contrasts(corrects$trial_type)
 
 # Require packages for analysis
 packs <- c('lme4', 'lmerTest',
@@ -185,84 +180,109 @@ packs <- c('lme4', 'lmerTest',
 # Model single trials' RT
 mod_rt0 <- lmer(data = corrects,
                win_rt ~ block * trial_type + (1|id))
-anova(mod_rt0, ddf = 'Kenward-Roger')
+#anova(mod_rt0, ddf = 'Kenward-Roger')
+anova(mod_rt0)
 plot_model(mod_rt0, 'diag')
 
 # Model single trials' log RT
 log_mod_rt0 <- lmer(data = corrects,
-                    log(win_rt) ~ block * trial_type + (1+trial_type+block|id))
-anova(log_mod_rt0, ddf = 'Kenward-Roger')
+                    log(win_rt) ~ block * trial_type + (1|id))
+#anova(log_mod_rt0, ddf = 'Kenward-Roger')
+anova(log_mod_rt0)
 plot_model(log_mod_rt0, 'diag')
 
 # Compare models
-anova(mod_rt0, log_mod_rt0)
+anova(mod_rt0, log_mod_rt0) # LogRT model has better fit
 
-# Model aggregated RT
-mod_rt0 <- lmer(data = corrects_mean,
+
+# --- 8) Analyse aggregated RT -------------------------------------------------
+# --- USE AGGREGATED RT TO REDUCE COMPUATIONAL LOAD ---
+
+# Summarise RT by id, block and trial type
+corrects_mean <- corrects %>% 
+  group_by(id, block, trial_type) %>% 
+  summarise(mean_rt = mean(win_rt))
+
+# Effect code cathegorical variables
+contrasts(corrects_mean$block) <-  contr.treatment(2, base = 1); contrasts(corrects_mean$block)
+contrasts(corrects_mean$trial_type) <-  contr.treatment(4, base = 1); contrasts(corrects_mean$trial_type)
+
+# Require packages for analysis
+packs <- c('lme4', 'lmerTest',
+           'sjPlot',
+           'emmeans'); getPacks(packs)
+
+# Model aggregated RT + random intercept for subjects
+mod_agg_rt0 <- lmer(data = corrects_mean,
                 log(mean_rt) ~ block * trial_type + (1|id))
-anova(mod_rt0, ddf = 'Kenward-Roger')
+anova(mod_agg_rt0, ddf = 'Kenward-Roger')
 plot_model(mod_rt0, 'diag')
 
-# Model aggregated log RT
-log_mod_rt0 <- lmer(data = corrects_mean,
+# Model aggregated RT + random intercept for subjects + random interceüt for trial types
+mod_agg_rt1 <- lmer(data = corrects_mean,
                     log(mean_rt) ~ block * trial_type + (1|id/trial_type))
-anova(log_mod_rt0, ddf = 'Kenward-Roger')
-plot_model(log_mod_rt0, 'diag')
+anova(mod_agg_rt1, ddf = 'Kenward-Roger')
+plot_model(mod_agg_rt1, 'diag') # model diagnostics
 
 # Compare models
-anova(mod_rt0, log_mod_rt0)
+anova(mod_agg_rt0, mod_agg_rt1) # By subject and trial type random effects model has better fit
 
-# UNCOMMENT TO REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
+
+# --- 9) Remove outliers (optional) --------------------------------------------
+# --- REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
 dat_rm <- stdResid(data = data.frame(corrects_mean),
-         model = log_mod_rt0,
+         model = mod_agg_rt1,
          return.data = T,
          plot = T,
          show.bound = T)
 
 # Model refitted without outliers
-log_mod_rt0 <- lmer(data = filter(dat_rm, Outlier == 0),
-                    log(mean_rt) ~ block * trial_type + (1|id/trial_type))
-anova(log_mod_rt0, ddf='Kenward-Roger')
-# plot_model(log_mod_rt0, 'diag')
+mod_agg_rt1 <- lmer(data = filter(dat_rm, Outlier == 0),
+                    log(mean_rt) ~ trial_type * block + (1|id/trial_type))
+# Anova table for final model
+anova(mod_agg_rt1, ddf='Kenward-Roger')
+# Regression table for model
+summary(log_mod_rt0)
+# model diagnostics for final model
+plot_model(mod_agg_rt1, 'diag') 
+# forest plot for standardised erstimates
+std_est <- plot_model(mod_agg_rt1, 'std2', order.terms = c(7:1)); std_est
 
 
-
+# --- 10) Compute sumary statistics for final model ----------------------------
 # Compute effect sizes (semi partial R2)
-amod <- anova(log_mod_rt0, ddf = 'Kenward-Roger'); amod
+amod <- anova(mod_agg_rt1, ddf = 'Kenward-Roger'); amod
 amod <-  as.data.frame(amod); amod
 amod$sp.R2 <- R2(amod); amod
 
-# Regression table for model
-summary(log_mod_rt0)
-
 # Save anova table
 tab_df(round(amod, 4), 
-       title = 'Anova table for linear mixed effects regression analysis of logRT',
+       title = 'Anova results for linear mixed effects regression analysis of log-RT',
        file = './results/tables/anova_rt.html')
 
 # Save model summary
-tab_model(log_mod_rt0,
-          title = 'Estimates of linear mixed effects regression analysis of logRT',
+tab_model(mod_agg_rt1,
+          title = 'Model estimates for linear mixed effects regression analysis of log-RT',
           file = './results/tables/summary_rt.html')
 
 
-# --- 8) Plot results ------------------------------------------------------------
+# --- 11) Interaction analysis  ------------------------------------------------
 # Quick interaction plot
-emmip(log_mod_rt0,  block ~ trial_type, CIs = T, type = 'response')
+emmip(mod_agg_rt1,  block ~ trial_type, CIs = T, type = 'response')
 
 # Pairwise contrasts
-emmeans(log_mod_rt0,  pairwise ~ trial_type | block, 
-        transform = 'response', lmer.df = 'kenward-roger')
-emmeans(log_mod_rt0,  pairwise ~ block | trial_type, 
-        transform = 'response', lmer.df = 'kenward-roger')
+emmeans(mod_agg_rt1,  pairwise ~ trial_type | block, 
+        transform = 'response', lmer.df = 'kenward-roger', adjust = 'fdr')
+emmeans(mod_agg_rt1,  pairwise ~ block | trial_type, 
+        transform = 'response', lmer.df = 'kenward-roger', adjust = 'fdr')
 
 # Save means for plot
-rt_emmeans <- emmeans(log_mod_rt0,  pairwise ~ block | trial_type,
+rt_emmeans <- emmeans(mod_agg_rt1,  pairwise ~ block | trial_type,
                       transform = 'response', 
-                      lmer.df = 'kenward-roger'); rt_emmeans
+                      lmer.df = 'kenward-roger', adjust='fdr'); rt_emmeans
 
 
-# Create interaction plot
+# --- Create interaction plot ---
 pd = position_dodge(.25)
 rt_est <- ggplot(data.frame(rt_emmeans$emmeans), 
                 aes(x = trial_type, y = response, 
@@ -285,10 +305,10 @@ rt_est <- ggplot(data.frame(rt_emmeans$emmeans),
   geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf), 
                color = 'black', size = rel(1), linetype = 1) +
   
-  labs(title = 'RT Model estimates (marginal means)', 
+  labs(title = 'Log-RT model estimates (tranformed marginal means)', 
        x = 'Levels of Trial Type', 
        y = 'Estimtaed RT [ms]', 
-       color = 'Block', shape = 'Block') + 
+       color = 'Task Block', shape = 'Task Block') + 
   
   theme_classic() +
   theme(plot.title = element_text(color = 'black', size = 13, face = 'bold',
@@ -301,12 +321,12 @@ rt_est <- ggplot(data.frame(rt_emmeans$emmeans),
         axis.text = element_text(color = 'black', size = 12),
         legend.position = 'bottom',
         legend.direction = 'horizontal',
-        legend.text = element_text(size = 12),
-        legend.title = element_text(size = 13),
-        legend.key.size = unit(1, 'cm')); rt_est
+        legend.text = element_text(size = 11),
+        legend.title = element_text(size = 12, face = 'bold'),
+        legend.key.size = unit(.6, 'cm')); rt_est
 # Save plot
 ggsave(rt_est, filename = './results/figs/emmeans_rt.pdf',
-       width = 6, height = 6)
+       width = 6, height = 7)
 
 
 # Plot means used for analysis
@@ -334,13 +354,65 @@ vio_rt <- ggplot(corrects_mean,
   theme(axis.line = element_blank(),
         plot.title = element_text(color = 'black', size = 13, face = 'bold',
                                   margin = margin(b = 15)),
-        legend.title = element_text(color = 'black', size = 13, face = 'bold'),
-        legend.text = element_text(color = 'black', size = 12),
         axis.title.x = element_text(color = 'black', size = 13, face = 'bold',
                                     margin = margin(t = 15)),
         axis.title.y = element_text(color = 'black', size = 13, face = 'bold',
                                     margin = margin(r = 15)),
-        axis.text = element_text(color = 'black', size = 12)); vio_rt
+        axis.text = element_text(color = 'black', size = 12),
+        legend.position = 'bottom',
+        legend.direction = 'horizontal',
+        legend.text = element_text(size = 11),
+        legend.title = element_text(size = 12, face = 'bold'),
+        legend.key.size = unit(.6, 'cm')); vio_rt
 # Save plot
 ggsave(vio_rt, filename = './results/figs/vio_rt.pdf',
        width = 8.5, height = 5)
+
+# --- 12) Final figure for submission ------------------------------------------
+# Standardised model estimates
+mod_est <- std_est + geom_hline(yintercept = 0, linetype = 2) +
+  scale_y_continuous(limits = c(-1, 1)) + 
+  scale_x_discrete(labels = c('AY', 'BX', 'BY', 
+                              'Perfomance', 'AY:Perfomance',
+                              'BX:Perfomance', 'BY:Perfomance')) +
+  scale_color_viridis(option = 'A', discrete = T, direction = -1, end = .55) +
+  
+  geom_segment(aes(x = -Inf, y = -1, xend = -Inf, yend = 1), 
+               color = 'black', size = rel(1), linetype = 1) +
+  geom_segment(aes(x = 1, y = -Inf, xend = 7, yend = -Inf), 
+               color = 'black', size = rel(1), linetype = 1) +
+  
+  labs(title = 'Standardised beta-weights for Log-RT model',
+       x = 'Predictors',
+       y = 'Estimates') + 
+  
+  theme_classic() + 
+  theme(plot.title = element_text(color = 'black', size = 13, face = 'bold',
+                                  margin = margin(b = 15)),
+        axis.line = element_blank(),
+        axis.title.x = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(t = 15)),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.text.x = element_text(color = 'black', size = 12),
+        axis.text.y = element_text(color = 'black', size = 12, 
+                                   margin = margin(r = 5))); mod_est
+# Save plot
+ggsave(mod_est, filename = './results/figs/mod_rt_est.pdf',
+       width = 8, height = 4)
+
+# Create margins for each plot in fugure
+margin_1 = theme(plot.margin = unit(c(0.25, 0.5, 0.25, 0.5), "cm"))
+margin_2 = theme(plot.margin = unit(c(1.00, 0.5, 2.50, 0.5), "cm"))
+margin_3 = theme(plot.margin = unit(c(0.25, 0.25, 2.50, 0.5), "cm"))
+
+# Arrange plot in single figure
+fig_rt <- grid.arrange(grobs = list(vio_rt + margin_1, 
+                                    mod_est + margin_2, 
+                                    rt_est + margin_3), 
+                       layout_matrix = rbind(c(1,1,3,3),
+                                             c(2,2,3,3)))
+
+# Save figure
+ggsave(fig_rt, filename = './results/figs/fig_rt.pdf',
+       width = 12, height = 8)
