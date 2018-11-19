@@ -1,8 +1,8 @@
 # --- author: jose C. garcia alanis
 # --- encoding: utf-8
 # --- r version: 3.4.4 (2018-03-15)
-# --- script version: Wed Nov 14 12:02:01 2018"
-# --- content: analyse behavioral data
+# --- script version: Mon Nov 19 13:10:42 2018
+# --- content: analysis of correct reactions (behavioral data)
 
 
 # --- 1) Run first, then move on to anylsis section ----------------------------
@@ -74,6 +74,7 @@ rm(set_path)
 # Packages
 packs <- c('dplyr',
            'ggplot2', 'viridis',
+           'psych',
            'sjPlot')
 # Load them
 getPacks(packs)
@@ -167,6 +168,7 @@ dev.off()
 # # Only keep trials with RTs > 100
 # corrects <- corrects %>% filter(rt >= 100)
 
+# Summarise RT by id, block and trial type
 corrects_mean <- corrects %>% 
   group_by(id, block, trial_type) %>% 
   summarise(mean_rt = mean(win_rt))
@@ -182,8 +184,8 @@ packs <- c('lme4', 'lmerTest',
 
 # Model single trials' RT
 mod_rt0 <- lmer(data = corrects,
-               win_rt ~ block * trial_type + (1+trial_type+block|id))
-anova(mod_rt0, ddfs = 'Kenward-Roger')
+               win_rt ~ block * trial_type + (1|id))
+anova(mod_rt0, ddf = 'Kenward-Roger')
 plot_model(mod_rt0, 'diag')
 
 # Model single trials' log RT
@@ -197,30 +199,33 @@ anova(mod_rt0, log_mod_rt0)
 
 # Model aggregated RT
 mod_rt0 <- lmer(data = corrects_mean,
-                mean_rt ~ block * trial_type + (1+trial_type+block|id))
+                log(mean_rt) ~ block * trial_type + (1|id))
 anova(mod_rt0, ddf = 'Kenward-Roger')
 plot_model(mod_rt0, 'diag')
 
 # Model aggregated log RT
 log_mod_rt0 <- lmer(data = corrects_mean,
-                    log(mean_rt) ~ block * trial_type + (1+trial_type+block|id))
+                    log(mean_rt) ~ block * trial_type + (1|id/trial_type))
 anova(log_mod_rt0, ddf = 'Kenward-Roger')
 plot_model(log_mod_rt0, 'diag')
 
-# # UNCOMMENT TO REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE)
-# dat_rm <- stdResid(data = data.frame(corrects_mean), 
-#          model = log_mod_rt0, 
-#          return.data = T, 
-#          plot = T,
-#          show.bound = T)
-# 
-# log_mod_rt0 <- lmer(data = filter(dat_rm, Outlier == 0),
-#                     log(mean_rt) ~ block * trial_type + (1+trial_type+block|id))
-# anova(log_mod_rt0, ddf='Kenward-Roger')
-# plot_model(log_mod_rt0, 'diag')
-
 # Compare models
 anova(mod_rt0, log_mod_rt0)
+
+# UNCOMMENT TO REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
+dat_rm <- stdResid(data = data.frame(corrects_mean),
+         model = log_mod_rt0,
+         return.data = T,
+         plot = T,
+         show.bound = T)
+
+# Model refitted without outliers
+log_mod_rt0 <- lmer(data = filter(dat_rm, Outlier == 0),
+                    log(mean_rt) ~ block * trial_type + (1|id/trial_type))
+anova(log_mod_rt0, ddf='Kenward-Roger')
+# plot_model(log_mod_rt0, 'diag')
+
+
 
 # Compute effect sizes (semi partial R2)
 amod <- anova(log_mod_rt0, ddf = 'Kenward-Roger'); amod
