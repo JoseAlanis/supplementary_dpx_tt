@@ -1,7 +1,7 @@
 # --- author: jose C. garcia alanis
 # --- encoding: utf-8
-# --- r version: 3.4.4 (2018-03-15)
-# --- script version: Mon Nov 19 13:10:42 2018
+# --- r version: 3.5.1 (2018-07-02) -- "Feather Spray"
+# --- script version: Fri Nov 23 13:02:37 2018
 # --- content: analysis of correct reactions (behavioral data)
 
 
@@ -59,8 +59,8 @@ stderr <- function(x) sqrt(var(x,na.rm=TRUE)/length(na.omit(x)))
 R2 <- function(model) {
   anov_mod <- as.data.frame(model)
   
-  rr <- ((anov_mod$NumDF / anov_mod$DenDF) * anov_mod$`F.value`) / 
-    (1+((anov_mod$NumDF / anov_mod$DenDF) * anov_mod$`F.value`))
+  rr <- ((anov_mod$NumDF / anov_mod$DenDF) * anov_mod[, grepl(names(anov_mod), pattern = 'F*value')] ) / 
+    (1+((anov_mod$NumDF / anov_mod$DenDF) * anov_mod[, grepl(names(anov_mod), pattern = 'F*value')] ))
   
   print(rr)
   
@@ -74,8 +74,7 @@ rm(set_path)
 # Packages
 packs <- c('dplyr',
            'ggplot2', 'viridis', 'gridExtra',
-           'psych',
-           'sjPlot')
+           'psych')
 # Load them
 getPacks(packs)
 
@@ -168,9 +167,15 @@ dev.off()
 # # Only keep trials with RTs > 100
 # corrects <- corrects %>% filter(rt >= 100)
 
+# Set order of levels of factor block
+corrects$block <- factor(corrects$block, levels = c("Performance", "Practice"))
+
 # Effect code cathegorical variables
-contrasts(corrects$block) <-  contr.treatment(2, base = 1); contrasts(corrects$block)
-contrasts(corrects$trial_type) <-  contr.treatment(4, base = 1); contrasts(corrects$trial_type)
+contrasts(corrects$block) <-  contr.sum(2); contrasts(corrects$block)
+contrasts(corrects$trial_type) <-  contr.sum(4); contrasts(corrects$trial_type)
+
+# -- Change default contrasts options ! --
+options(contrasts = c("contr.sum","contr.poly"))
 
 # Require packages for analysis
 packs <- c('lme4', 'lmerTest',
@@ -196,16 +201,21 @@ anova(mod_rt0, log_mod_rt0) # LogRT model has better fit
 
 
 # --- 8) Analyse aggregated RT -------------------------------------------------
-# --- USE AGGREGATED RT TO REDUCE COMPUATIONAL LOAD ---
+# --- USE AGGREGATED RT TO REDUCE COMPUTATIONAL LOAD ---
 
 # Summarise RT by id, block and trial type
 corrects_mean <- corrects %>% 
   group_by(id, block, trial_type) %>% 
   summarise(mean_rt = mean(win_rt))
 
+# Set order of levels of factor block
+corrects_mean$block <- factor(corrects_mean$block, 
+                              levels = c("Performance", "Practice"))
+
 # Effect code cathegorical variables
-contrasts(corrects_mean$block) <-  contr.treatment(2, base = 1); contrasts(corrects_mean$block)
-contrasts(corrects_mean$trial_type) <-  contr.treatment(4, base = 1); contrasts(corrects_mean$trial_type)
+contrasts(corrects_mean$block) <-  contr.sum(2); contrasts(corrects_mean$block)
+
+contrasts(corrects_mean$trial_type) <-  contr.sum(4); contrasts(corrects_mean$trial_type)
 
 # Require packages for analysis
 packs <- c('lme4', 'lmerTest',
@@ -219,14 +229,23 @@ anova(mod_agg_rt0, ddf = 'Kenward-Roger')
 plot_model(mod_rt0, 'diag')
 
 # Model aggregated RT + random intercept for subjects + random interceüt for trial types
-mod_agg_rt1 <- lmer(data = corrects_mean,
-                    log(mean_rt) ~ block * trial_type + (1|id/trial_type))
+mod_agg_rt1 <- lmer(data = data.frame(corrects_mean),
+                    log(mean_rt) ~ trial_type * block + (1|id/trial_type))
 anova(mod_agg_rt1, ddf = 'Kenward-Roger')
-plot_model(mod_agg_rt1, 'diag') # model diagnostics
+# Model summary
+summary(mod_agg_rt1, ddf = 'Kenward-Roger')
+# Model diagnostics
+plot_model(mod_agg_rt1, 'diag')
 
 # Compare models
-anova(mod_agg_rt0, mod_agg_rt1) # By subject and trial type random effects model has better fit
+anova_mods <- anova(mod_agg_rt0, mod_agg_rt1); anova_mods # By subject and trial type random effects have better fit
 
+# Save results of model comparissons
+tab_df(data.frame(attributes(anova_mods)$heading),
+       title = 'Comparison of models with different random structure for log-RT',
+       file = './results/tables/mod_comparisons_rt_models.html')
+tab_df(round(data.frame(anova_mods), digits = 3),
+       file = './results/tables/mod_comparisons_rt_estimates.html')
 
 # --- 9) Remove outliers (optional) --------------------------------------------
 # --- REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
@@ -237,17 +256,17 @@ dat_rm <- stdResid(data = data.frame(corrects_mean),
          show.bound = T)
 
 # Model refitted without outliers
-mod_agg_rt1 <- lmer(data = filter(dat_rm, Outlier == 0),
+corrects_no_out <- filter(dat_rm, Outlier == 0)
+mod_agg_rt1 <- lmer(data = corrects_no_out,
                     log(mean_rt) ~ trial_type * block + (1|id/trial_type))
 # Anova table for final model
 anova(mod_agg_rt1, ddf='Kenward-Roger')
 # Regression table for model
-summary(log_mod_rt0)
+summary(mod_agg_rt1, ddf='Kenward-Roger')
 # model diagnostics for final model
 plot_model(mod_agg_rt1, 'diag') 
 # forest plot for standardised erstimates
 std_est <- plot_model(mod_agg_rt1, 'std2', order.terms = c(7:1)); std_est
-
 
 # --- 10) Compute sumary statistics for final model ----------------------------
 # Compute effect sizes (semi partial R2)
@@ -271,10 +290,17 @@ tab_model(mod_agg_rt1,
 emmip(mod_agg_rt1,  block ~ trial_type, CIs = T, type = 'response')
 
 # Pairwise contrasts
-emmeans(mod_agg_rt1,  pairwise ~ trial_type | block, 
-        transform = 'response', lmer.df = 'kenward-roger', adjust = 'fdr')
+# By trial type
+emmeans(mod_agg_rt1,  pairwise ~ trial_type, 
+        lmer.df = 'kenward-roger', adjust = 'holm')
+# By trial type
+emmeans(mod_agg_rt1,  pairwise ~ block,
+        lmer.df = 'kenward-roger', adjust = 'holm')
+# Interaction between trial type and block
 emmeans(mod_agg_rt1,  pairwise ~ block | trial_type, 
-        transform = 'response', lmer.df = 'kenward-roger', adjust = 'fdr')
+        lmer.df = 'kenward-roger', adjust = 'holm')
+emmeans(mod_agg_rt1,  pairwise ~ trial_type | block, 
+        lmer.df = 'kenward-roger', adjust = 'holm')
 
 # Save means for plot
 rt_emmeans <- emmeans(mod_agg_rt1,  pairwise ~ block | trial_type,
@@ -371,10 +397,10 @@ ggsave(vio_rt, filename = './results/figs/vio_rt.pdf',
 # --- 12) Final figure for submission ------------------------------------------
 # Standardised model estimates
 mod_est <- std_est + geom_hline(yintercept = 0, linetype = 2) +
-  scale_y_continuous(limits = c(-1, 1)) + 
-  scale_x_discrete(labels = c('AY', 'BX', 'BY', 
-                              'Perfomance', 'AY:Perfomance',
-                              'BX:Perfomance', 'BY:Perfomance')) +
+  scale_y_continuous(limits = c(-1, 1.2)) +
+  scale_x_discrete(labels = c('AX', 'AY', 'BX', 
+                              'Perfomance', 'AX:Perfomance',
+                              'AY:Perfomance', 'BX:Perfomance')) +
   scale_color_viridis(option = 'A', discrete = T, direction = -1, end = .55) +
   
   geom_segment(aes(x = -Inf, y = -1, xend = -Inf, yend = 1), 
@@ -395,16 +421,16 @@ mod_est <- std_est + geom_hline(yintercept = 0, linetype = 2) +
         axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
                                     margin = margin(r = 15)),
         axis.text.x = element_text(color = 'black', size = 12),
-        axis.text.y = element_text(color = 'black', size = 12, 
+        axis.text.y = element_text(color = 'black', size = 11, 
                                    margin = margin(r = 5))); mod_est
 # Save plot
 ggsave(mod_est, filename = './results/figs/mod_rt_est.pdf',
        width = 8, height = 4)
 
 # Create margins for each plot in fugure
-margin_1 = theme(plot.margin = unit(c(0.25, 0.5, 0.25, 0.5), "cm"))
-margin_2 = theme(plot.margin = unit(c(1.00, 0.5, 2.50, 0.5), "cm"))
-margin_3 = theme(plot.margin = unit(c(0.25, 0.25, 2.50, 0.5), "cm"))
+margin_1 = theme(plot.margin = unit(c(0.25, 0.25, 0.25, 0.5), "cm"))
+margin_2 = theme(plot.margin = unit(c(1.00, 0.25, 2.50, 0.5), "cm"))
+margin_3 = theme(plot.margin = unit(c(0.25, 0.25, 2.50, 0.75), "cm"))
 
 # Arrange plot in single figure
 fig_rt <- grid.arrange(grobs = list(vio_rt + margin_1, 
@@ -415,4 +441,4 @@ fig_rt <- grid.arrange(grobs = list(vio_rt + margin_1,
 
 # Save figure
 ggsave(fig_rt, filename = './results/figs/fig_rt.pdf',
-       width = 12, height = 8)
+       width = 13, height = 8)
