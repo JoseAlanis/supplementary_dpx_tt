@@ -1,8 +1,8 @@
-# --- author: jose C. garcia alanis
+# --- author: jose c. garcia alanis
 # --- encoding: utf-8
 # --- r version: 3.5.1 (2018-07-02) -- "Feather Spray"
-# --- script version: Fri Nov 23 13:02:37 2018
-# --- content: analysis of correct reactions (behavioral data)
+# --- script version: Jan 2018
+# --- content: analysis of correct reactions RT
 
 
 # --- 1) Run first, then move on to anylsis section ----------------------------
@@ -38,7 +38,6 @@ set_path <- function() {
   }
 }
 
-
 # Set working deirectory
 set_path()
 
@@ -71,12 +70,10 @@ R2 <- function(model) {
 # clean up
 rm(set_path)
 
-# Packages
-packs <- c('dplyr',
-           'ggplot2', 'viridis', 'gridExtra',
-           'psych')
-# Load them
-getPacks(packs)
+# Load packahges
+getPacks(c('dplyr',
+           'ggplot2', 'viridis', 'gridExtra', 'sjPlot',
+           'psych'))
 
 
 # --- 4) Import behavioral data ------------------------------------------------
@@ -98,10 +95,20 @@ rt_dens <- ggplot(corrects, aes(x = rt, fill = trial_type)) +
   geom_density(alpha=.3) + 
   facet_wrap(~ trial_type) +
   coord_cartesian(xlim = c(0, 800), ylim = c(0, .008)) +
-  scale_fill_viridis(option = 'B', discrete = T); rt_dens
+  scale_fill_viridis(option = 'B', discrete = T) +
+  labs(title = 'Raw-RT Distribution', x = 'Reaction Time (ms)', y = 'Density', fill = 'Trial Type') + 
+  theme(plot.title = element_text(color = 'black', face = 'bold', size = 13,
+                                  margin = margin(b = 15), hjust = .5),
+        strip.text = element_text(color = 'black', face = 'bold', size = 13),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.title.x = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(t = 15)),
+        axis.text = element_text(color = 'black', size = 12),
+        legend.title = element_text(color = 'black', face = 'bold', size = 13)); rt_dens
 # Save plot
 ggsave(rt_dens, filename = './results/figs/rt_raw_dens.pdf',
-       width = 7, height = 5)
+       width = 8, height = 5)
 
 # Min and max reaction time
 min_max_rt <- corrects %>%
@@ -142,10 +149,20 @@ rt_win_dens <- ggplot(corrects, aes(x = win_rt, fill = trial_type)) +
   geom_density(alpha=.3) + 
   facet_wrap(~ trial_type) +
   coord_cartesian(xlim = c(0, 800), ylim = c(0, .008)) +
-  scale_fill_viridis(option = 'B', discrete = T); rt_win_dens
+  scale_fill_viridis(option = 'B', discrete = T) +
+  labs(title = 'Winsorised RT Distribution', x = 'Reaction Time (ms)', y = 'Density', fill = 'Trial Type') + 
+  theme(plot.title = element_text(color = 'black', face = 'bold', size = 13,
+                                  margin = margin(b = 15), hjust = .5),
+        strip.text = element_text(color = 'black', face = 'bold', size = 13),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.title.x = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(t = 15)),
+        axis.text = element_text(color = 'black', size = 12),
+        legend.title = element_text(color = 'black', face = 'bold', size = 13)); rt_win_dens
 # Save plot
 ggsave(rt_win_dens, filename = './results/figs/rt_win_dens.pdf',
-       width = 7, height = 5)
+       width = 8, height = 5)
 
 # Plot raw and adjusted distributions side by side
 pdf(file = './results/figs/rt_distribution.pdf', height = 4, width = 12)
@@ -178,9 +195,9 @@ contrasts(corrects$trial_type) <-  contr.sum(4); contrasts(corrects$trial_type)
 options(contrasts = c("contr.sum","contr.poly"))
 
 # Require packages for analysis
-packs <- c('lme4', 'lmerTest',
+getPacks(c('lme4', 'lmerTest',
            'sjPlot',
-           'emmeans'); getPacks(packs)
+           'emmeans'))
 
 # Model single trials' RT
 mod_rt0 <- lmer(data = corrects,
@@ -214,7 +231,6 @@ corrects_mean$block <- factor(corrects_mean$block,
 
 # Effect code cathegorical variables
 contrasts(corrects_mean$block) <-  contr.sum(2); contrasts(corrects_mean$block)
-
 contrasts(corrects_mean$trial_type) <-  contr.sum(4); contrasts(corrects_mean$trial_type)
 
 # Require packages for analysis
@@ -223,7 +239,7 @@ packs <- c('lme4', 'lmerTest',
            'emmeans'); getPacks(packs)
 
 # Model aggregated RT + random intercept for subjects
-mod_agg_rt0 <- lmer(data = corrects_mean,
+mod_agg_rt0 <- lmer(data = data.frame(corrects_mean),
                 log(mean_rt) ~ block * trial_type + (1|id))
 anova(mod_agg_rt0, ddf = 'Kenward-Roger')
 plot_model(mod_rt0, 'diag')
@@ -267,6 +283,7 @@ summary(mod_agg_rt1, ddf='Kenward-Roger')
 plot_model(mod_agg_rt1, 'diag') 
 # forest plot for standardised erstimates
 std_est <- plot_model(mod_agg_rt1, 'std2', order.terms = c(7:1)); std_est
+
 
 # --- 10) Compute sumary statistics for final model ----------------------------
 # Compute effect sizes (semi partial R2)
@@ -331,7 +348,7 @@ rt_est <- ggplot(data.frame(rt_emmeans$emmeans),
   geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf), 
                color = 'black', size = rel(1), linetype = 1) +
   
-  labs(title = 'Log-RT model estimates (tranformed marginal means)', 
+  labs(title = 'C) Back tranformed marginal means for Log-RT model', 
        x = 'Levels of Trial Type', 
        y = 'Estimtaed RT [ms]', 
        color = 'Task Block', shape = 'Task Block') + 
@@ -350,6 +367,7 @@ rt_est <- ggplot(data.frame(rt_emmeans$emmeans),
         legend.text = element_text(size = 11),
         legend.title = element_text(size = 12, face = 'bold'),
         legend.key.size = unit(.6, 'cm')); rt_est
+
 # Save plot
 ggsave(rt_est, filename = './results/figs/emmeans_rt.pdf',
        width = 6, height = 7)
@@ -363,18 +381,18 @@ vio_rt <- ggplot(corrects_mean,
   geom_violin(trim = FALSE, position = position_dodge(.6), scale = 'area') +
   geom_boxplot(width = 0.1, position = position_dodge(.6), fill = 'white') +
   
-  geom_segment(aes(x = -Inf, y = 100, xend = -Inf, yend = 800), 
+  geom_segment(aes(x = -Inf, y = 0, xend = -Inf, yend = 800), 
                color = 'black', size = rel(1), linetype = 1) +
   geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf), 
                color = 'black', size = rel(1), linetype = 1) +
   
-  labs(title = 'Distribution of RT means',
+  labs(title = 'B) Distribution of RT means',
        fill = 'Task Block',
        y = 'Mean RT [ms]', 
        x = 'Levels of Trial Type') + 
   
   scale_fill_viridis(option = 'D', begin = .4, discrete = T, alpha = .9) +
-  scale_y_continuous(breaks = c(100, 200, 300, 400, 500, 600, 700, 800)) +
+  scale_y_continuous(breaks = c(0, 200, 400, 600, 800)) +
   
   theme_classic() + 
   theme(axis.line = element_blank(),
@@ -390,6 +408,7 @@ vio_rt <- ggplot(corrects_mean,
         legend.text = element_text(size = 11),
         legend.title = element_text(size = 12, face = 'bold'),
         legend.key.size = unit(.6, 'cm')); vio_rt
+
 # Save plot
 ggsave(vio_rt, filename = './results/figs/vio_rt.pdf',
        width = 8.5, height = 5)
@@ -408,7 +427,7 @@ mod_est <- std_est + geom_hline(yintercept = 0, linetype = 2) +
   geom_segment(aes(x = 1, y = -Inf, xend = 7, yend = -Inf), 
                color = 'black', size = rel(1), linetype = 1) +
   
-  labs(title = 'Standardised beta-weights for Log-RT model',
+  labs(title = 'A) Standardised beta-weights for Log-RT model',
        x = 'Predictors',
        y = 'Estimates') + 
   
@@ -428,16 +447,17 @@ ggsave(mod_est, filename = './results/figs/mod_rt_est.pdf',
        width = 8, height = 4)
 
 # Create margins for each plot in fugure
-margin_1 = theme(plot.margin = unit(c(0.25, 0.25, 0.25, 0.5), "cm"))
-margin_2 = theme(plot.margin = unit(c(1.00, 0.25, 2.50, 0.5), "cm"))
-margin_3 = theme(plot.margin = unit(c(0.25, 0.25, 2.50, 0.75), "cm"))
+margin_1 = theme(plot.margin = unit(c(1.25, 0.25, 1.25, .25), "cm"))
+margin_2 = theme(plot.margin = unit(c(0, 0.25, 1, 2.3), "cm"))
+margin_3 = theme(plot.margin = unit(c(1.25, 0.25, 1, 0.5), "cm"))
+
 
 # Arrange plot in single figure
-fig_rt <- grid.arrange(grobs = list(vio_rt + margin_1, 
-                                    mod_est + margin_2, 
+fig_rt <- grid.arrange(grobs = list(mod_est + margin_1,
+                                    vio_rt + margin_2, 
                                     rt_est + margin_3), 
                        layout_matrix = rbind(c(1,1,3,3),
-                                             c(2,2,3,3)))
+                                             c(2,2,3,3))); fig_rt
 
 # Save figure
 ggsave(fig_rt, filename = './results/figs/fig_rt.pdf',
