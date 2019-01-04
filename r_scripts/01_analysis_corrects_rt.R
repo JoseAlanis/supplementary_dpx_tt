@@ -292,7 +292,7 @@ amod <-  as.data.frame(amod); amod
 amod$sp.R2 <- R2(amod); amod
 
 # Save anova table
-tab_df(round(amod, 4), 
+tab_df(round(amod, 5), 
        title = 'Anova results for linear mixed effects regression analysis of log-RT',
        file = './results/tables/anova_rt.html')
 
@@ -301,6 +301,30 @@ tab_model(mod_agg_rt1,
           title = 'Model estimates for linear mixed effects regression analysis of log-RT',
           file = './results/tables/summary_rt.html')
 
+mean_rt_0 <- corrects_mean %>%
+  group_by(block) %>% 
+  summarise(mean = mean(mean_rt), 
+            sd = sd(mean_rt)); mean_rt_0
+
+mean_rt_1 <- corrects_mean %>%
+  group_by(trial_type) %>% 
+  summarise(mean = mean(mean_rt), 
+            sd = sd(mean_rt)); mean_rt_1
+
+# Descriptives
+mean_rt_2 <- corrects_mean %>%
+  group_by(block, trial_type) %>% 
+  summarise(mean = mean(mean_rt), 
+            sd = sd(mean_rt)); mean_rt_2
+
+# Save table
+tab_df(data.frame(mutate_if(mean_rt_0, is.numeric, round, 2)), 
+       file = './results/tables/decriptives_rt_block.html')
+tab_df(data.frame(mutate_if(mean_rt_1, is.numeric, round, 2)), 
+       file = './results/tables/decriptives_rt_trial_type.html')
+tab_df(data.frame(mutate_if(mean_rt_2, is.numeric, round, 2)), 
+       file = './results/tables/decriptives_rt_trial_type_by_block.html')
+
 
 # --- 11) Interaction analysis  ------------------------------------------------
 # Quick interaction plot
@@ -308,8 +332,9 @@ emmip(mod_agg_rt1,  block ~ trial_type, CIs = T, type = 'response')
 
 # Pairwise contrasts
 # By trial type
-emmeans(mod_agg_rt1,  pairwise ~ trial_type, 
-        lmer.df = 'kenward-roger', adjust = 'holm')
+tt_means <- emmeans(mod_agg_rt1,  pairwise ~ trial_type, 
+                    lmer.df = 'kenward-roger', adjust = 'holm', transform = 'response'); tt_means
+confint(tt_means)
 # By trial type
 emmeans(mod_agg_rt1,  pairwise ~ block,
         lmer.df = 'kenward-roger', adjust = 'holm')
