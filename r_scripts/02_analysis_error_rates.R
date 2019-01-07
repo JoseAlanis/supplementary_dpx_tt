@@ -1,8 +1,8 @@
-# --- author: jose C. garcia alanis
+# --- author: jose c. garcia alanis
 # --- encoding: utf-8
-# --- r version: 3.4.4 (2018-03-15)
-# --- script version: Mon Nov 19 13:10:42 2018
-# --- content: analysis of errors (behavioral data)
+# --- r version: 3.5.1 (2018-07-02) -- "Feather Spray"
+# --- script version: Jan 2018
+# --- content: analysis of error rates
 
 
 # --- 1) Run first, then move on to anylsis section ----------------------------
