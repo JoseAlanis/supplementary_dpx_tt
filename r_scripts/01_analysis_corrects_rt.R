@@ -70,7 +70,7 @@ R2 <- function(model) {
 # clean up
 rm(set_path)
 
-# Load packahges
+# Load packages necessary for analysis
 getPacks(c('dplyr',
            'ggplot2', 'viridis', 'gridExtra', 'sjPlot',
            'psych'))
@@ -113,7 +113,7 @@ ggsave(rt_dens, filename = './results/figs/rt_raw_dens.pdf',
 # Min and max reaction time
 min_max_rt <- corrects %>%
   group_by(block, trial_type) %>% 
-  summarise(mean = mean (rt), 
+  summarise(mean = mean(rt), 
             se = stderr(rt), 
             min = min(rt), 
             max = max(rt)); min_max_rt
@@ -234,9 +234,9 @@ contrasts(corrects_mean$block) <-  contr.sum(2); contrasts(corrects_mean$block)
 contrasts(corrects_mean$trial_type) <-  contr.sum(4); contrasts(corrects_mean$trial_type)
 
 # Require packages for analysis
-packs <- c('lme4', 'lmerTest',
+getPacks(c('lme4', 'lmerTest',
            'sjPlot',
-           'emmeans'); getPacks(packs)
+           'emmeans'))
 
 # Model aggregated RT + random intercept for subjects
 mod_agg_rt0 <- lmer(data = data.frame(corrects_mean),
@@ -301,11 +301,13 @@ tab_model(mod_agg_rt1,
           title = 'Model estimates for linear mixed effects regression analysis of log-RT',
           file = './results/tables/summary_rt.html')
 
+
+# Descriptives
 mean_rt_0 <- corrects_mean %>%
   group_by(block) %>% 
   summarise(mean = mean(mean_rt), 
             sd = sd(mean_rt)); mean_rt_0
-
+# Descriptives
 mean_rt_1 <- corrects_mean %>%
   group_by(trial_type) %>% 
   summarise(mean = mean(mean_rt), 
@@ -333,16 +335,33 @@ emmip(mod_agg_rt1,  block ~ trial_type, CIs = T, type = 'response')
 # Pairwise contrasts
 # By trial type
 tt_means <- emmeans(mod_agg_rt1,  pairwise ~ trial_type, 
-                    lmer.df = 'kenward-roger', adjust = 'holm', transform = 'response'); tt_means
+                    lmer.df = 'kenward-roger', 
+                    adjust = 'holm', 
+                    transform = 'response'); tt_means
 confint(tt_means)
 # By trial type
 emmeans(mod_agg_rt1,  pairwise ~ block,
-        lmer.df = 'kenward-roger', adjust = 'holm')
-# Interaction between trial type and block
-emmeans(mod_agg_rt1,  pairwise ~ block | trial_type, 
-        lmer.df = 'kenward-roger', adjust = 'holm')
-emmeans(mod_agg_rt1,  pairwise ~ trial_type | block, 
-        lmer.df = 'kenward-roger', adjust = 'holm')
+        lmer.df = 'kenward-roger', 
+        adjust = 'holm', 
+        transform = 'response')
+
+# Interaction between block by trial type
+b_by_tt <- emmeans(mod_agg_rt1,  
+                       pairwise ~ block | trial_type, 
+                       lmer.df = 'kenward-roger', 
+                       adjust = 'holm',
+                       transform = 'response'); tt_by_block
+# CIs
+confint(b_by_tt)
+
+# Interaction between trial type by block
+tt_by_block <- emmeans(mod_agg_rt1,  
+                       pairwise ~ trial_type | block, 
+                       lmer.df = 'kenward-roger', 
+                       adjust = 'holm',
+                       transform = 'response')
+# CIs
+confint(tt_by_block)
 
 # Save means for plot
 rt_emmeans <- emmeans(mod_agg_rt1,  pairwise ~ block | trial_type,
