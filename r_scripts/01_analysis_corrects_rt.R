@@ -80,6 +80,10 @@ getPacks(c('dplyr',
 # Get data
 load('./data_frames/corrects_rt.Rda')
 
+# Set order of levels of factor block
+corrects$block <- factor(corrects$block, 
+                         levels = c("Practice", "Performance"))
+
 
 # --- 5) Inspect distribution --------------------------------------------------
 # Plot RT

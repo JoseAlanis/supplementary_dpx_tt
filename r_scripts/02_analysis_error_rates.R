@@ -80,6 +80,10 @@ getPacks(c('dplyr',
 # Get data
 load('./data_frames/errors.Rda')
 
+# Set order of levels of factor block
+errors$block <- factor(errors$block, 
+                         levels = c("Practice", "Performance"))
+
 
 # --- 5) Inspect distribution --------------------------------------------------
 # Histogram of error rates frequency
