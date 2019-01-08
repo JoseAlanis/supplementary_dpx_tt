@@ -89,6 +89,9 @@ pci <- pci %>% mutate(block = ifelse(block == 1, 'Practice', 'Performance'))
 pci$block <- factor(pci$block, 
                     levels = c("Practice", "Performance"))
 
+# ID to factor
+pci$id <- as.factor(pci$id)
+
 
 # --- 5) Inspect distribution --------------------------------------------------
 # histograms of each pci/pbi
@@ -164,7 +167,7 @@ change_abias <- ggplot(data = data.frame(a_bias_df)) +
   labs(color = 'Change', linetype = 'Change', shape = 'Change',
        fill = 'Condition',
        x = 'Levels of condition', 
-       y = '0.5 x (Correct AX + Incorrect AY)', 
+       y = bquote("0.5 x ( Correct "["AX"] ~ " - Incorrect "["AY"] ~ ")"), 
        title = 'A-cue response bias') +
   
   theme_classic() +
@@ -231,7 +234,7 @@ change_dprime <- ggplot(data = data.frame(dprime_df)) +
        fill = 'Condition',
        x = 'Levels of condition', 
        # bquote("Hello" ~ r[xy] == .(cor) ~ "and" ~ B^2))
-       y = bquote("0.5 x ( Correct"["AX"] ~ "- Incorrect"["AY"] ~ ")"), 
+       y = bquote("0.5 x ( Correct "["AX"] ~ " - Incorrect "["AY"] ~ ")"), 
        title = "d' Context") +
   
   theme_classic() +
@@ -394,119 +397,366 @@ ggsave(change_pbirt, filename = './results/figs/change_pbi_rt.pdf',
 
 
 
- # --- 6) Analyse PBIs ----------------------------------------------------------
+# --- 6) Analyse A-cue bias ----------------------------------------------------
 
+# Set order of levels of factor block
+pci$block <- factor(pci$block, levels = c("Performance", "Practice"))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-x <- pci %>% group_by(block) %>%
-  summarise_at(.vars = vars(dprime:pbi_rt), .funs = funs(mean, sd))
-data.frame(x)
-
-
-pci$id <- factor(pci$id)
-
-pci$block <- as.factor(pci$block)
+# Effect code cathegorical variables
 contrasts(pci$block) <-  contr.sum(2); contrasts(pci$block)
 
+# -- Change default contrasts options ! --
+options(contrasts = c("contr.sum", "contr.poly"))
 
+# Require packages for analysis
+getPacks(c('lme4', 'lmerTest',
+           'sjPlot',
+           'emmeans'))
+
+# Model change in A-cue bias
 mod_pc1 <- lmer(data = pci, 
-                dprime ~ block + (1|id)) 
-amod <- anova(mod_pc1, ddf = 'Kenward-Roger'); amod
-
-dat_rm <- stdResid(data = pci,
-                   model = mod_pc1, 
-                   plot = T, 
-                   return.data = T, 
-                   show.bound = T)
-
-mod_pc1 <- lmer(data = filter(dat_rm, Outlier == 0), 
-                dprime ~ block + (1|id)) 
-amod <- anova(mod_pc1, ddf = 'Kenward-Roger'); amod
-R2(amod)
-
+                a_bias ~ block + (1|id)) 
+# ANOVA table
+anova(mod_pc1, ddf = 'Kenward-Roger')
+# model diagnostics
 plot_model(mod_pc1, 'diag')
 
+# --- 6.1) Remove outliers (optional) ------------------------------------------
+# --- REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
+dat1_rm <- stdResid(pci, mod_pc1, plot = T, show.bound = T)
+
+# Model refitted without outliers
+pci_no_out <- filter(dat1_rm, Outlier == 0)
+mod_pc1 <- lmer(data = pci_no_out,
+                a_bias ~ block + (1|id))
+# Anova table for final model
+anova(mod_pc1, ddf = 'Kenward-Roger')
+# Regression table for model
+summary(mod_pc1, ddf = 'Kenward-Roger')
+# model diagnostics for final model
+plot_model(mod_pc1, 'diag')
+# forest plot for standardised erstimates
+std_est <- plot_model(mod_pc1, 'std2'); std_est
+
+# --- 6.2) Compute summary statistics for A_bias model -------------------------
+# Compute effect sizes (semi partial R2)
+amod <- anova(mod_pc1, ddf = 'Kenward-Roger'); amod
+amod <-  as.data.frame(amod); amod
+amod$sp.R2 <- R2(amod); amod
+
+# Save anova table
+tab_df(round(amod, 5), 
+       title = 'Anova results for linear mixed effects regression analysis of A-cue bias',
+       file = './results/tables/anova_abias.html')
+
+# Save model summary
+tab_model(mod_pc1,
+          title = 'Model estimates for linear mixed effects regression analysis of A-cue bias',
+          file = './results/tables/summary_abias.html')
 
 
 
+# --- 7) Analyse d prime -------------------------------------------------------
 
+# Set order of levels of factor block
+pci$block <- factor(pci$block, levels = c("Performance", "Practice"))
+
+# Effect code cathegorical variables
+contrasts(pci$block) <-  contr.sum(2); contrasts(pci$block)
+
+# -- Change default contrasts options ! --
+options(contrasts = c("contr.sum", "contr.poly"))
+
+# Require packages for analysis
+getPacks(c('lme4', 'lmerTest',
+           'sjPlot',
+           'emmeans'))
+
+# Model change in A-cue bias
 mod_pc2 <- lmer(data = pci, 
-                a_bias ~ block + (1|id)) 
-amod <- anova(mod_pc2, ddf = 'Kenward-Roger'); amod
-
-dat_rm <- stdResid(data = pci,
-                   model = mod_pc2, 
-                   plot = T, 
-                   return.data = T, 
-                   show.bound = T)
-
-mod_pc2<- lmer(data = filter(dat_rm, Outlier == 0), 
-                a_bias ~ block + (1|id)) 
-
-amod <- anova(mod_pc2, ddf = 'Kenward-Roger'); amod
-amod$sR2 <-R2(amod); amod
-
-emmip(mod_pc2, ~ block, CIs = T)
-
+                dprime ~ block + (1|id)) 
+# ANOVA table
+anova(mod_pc2, ddf = 'Kenward-Roger')
+# model diagnostics
 plot_model(mod_pc2, 'diag')
 
+# --- 7.1) Remove outliers (optional) ------------------------------------------
+# --- REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
+dat2_rm <- stdResid(pci, mod_pc2, plot = T, show.bound = T)
+
+# Model refitted without outliers
+pci_no_out <- filter(dat2_rm, Outlier == 0)
+mod_pc2 <- lmer(data = pci_no_out,
+                dprime ~ block + (1|id))
+# Anova table for final model
+anova(mod_pc2, ddf = 'Kenward-Roger')
+# Regression table for model
+summary(mod_pc2, ddf = 'Kenward-Roger')
+# model diagnostics for final model
+plot_model(mod_pc2, 'diag')
+# forest plot for standardised erstimates
+std_est_2 <- plot_model(mod_pc2, 'std2'); std_est_2
+
+# --- 7.2) Compute summary statistics for A_bias model -------------------------
+# Compute effect sizes (semi partial R2)
+amod <- anova(mod_pc2, ddf = 'Kenward-Roger'); amod
+amod <-  as.data.frame(amod); amod
+amod$sp.R2 <- R2(amod); amod
+
+# Save anova table
+tab_df(round(amod, 5), 
+       title = "Anova results for linear mixed effects regression analysis of d' Context",
+       file = './results/tables/anova_dprime.html')
+
+# Save model summary
+tab_model(mod_pc2,
+          title = "Model estimates for linear mixed effects regression analysis of d' Contex",
+          file = './results/tables/summary_dprime.html')
 
 
+# --- 8) Analyse PBI errors ----------------------------------------------------
 
+# Set order of levels of factor block
+pci$block <- factor(pci$block, levels = c("Performance", "Practice"))
 
+# Effect code cathegorical variables
+contrasts(pci$block) <-  contr.sum(2); contrasts(pci$block)
 
+# -- Change default contrasts options ! --
+options(contrasts = c("contr.sum", "contr.poly"))
 
+# Require packages for analysis
+getPacks(c('lme4', 'lmerTest',
+           'sjPlot',
+           'emmeans'))
+
+# Model change in A-cue bias
 mod_pc3 <- lmer(data = pci, 
                 pbi_err ~ block + (1|id)) 
-amod <- anova(mod_pc3, ddf = 'Kenward-Roger'); amod
+# ANOVA table
+anova(mod_pc3, ddf = 'Kenward-Roger')
+# model diagnostics
 plot_model(mod_pc3, 'diag')
 
-dat_rm <- stdResid(data = pci,
-                   model = mod_pc3, 
-                   plot = T, 
-                   return.data = T, 
-                   show.bound = T)
+# --- 8.1) Remove outliers (optional) ------------------------------------------
+# --- REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
+dat3_rm <- stdResid(pci, mod_pc3, plot = T, show.bound = T)
 
-mod_pc3 <- lmer(data = filter(dat_rm, Outlier == 0), 
-                pbi_err ~ block + (1|id)) 
+# Model refitted without outliers
+pci_no_out <- filter(dat3_rm, Outlier == 0)
+mod_pc3 <- lmer(data = pci_no_out,
+                pbi_err ~ block + (1|id))
+# Anova table for final model
+anova(mod_pc3, ddf = 'Kenward-Roger')
+# Regression table for model
+summary(mod_pc3, ddf = 'Kenward-Roger')
+# model diagnostics for final model
+plot_model(mod_pc3, 'diag')
+# forest plot for standardised erstimates
+std_est_3 <- plot_model(mod_pc3, 'std2'); std_est_3
 
+# --- 8.2) Compute summary statistics for A_bias model -------------------------
+# Compute effect sizes (semi partial R2)
 amod <- anova(mod_pc3, ddf = 'Kenward-Roger'); amod
+amod <-  as.data.frame(amod); amod
+amod$sp.R2 <- R2(amod); amod
+
+# Save anova table
+tab_df(round(amod, 5), 
+       title = "Anova results for linear mixed effects regression analysis of PBI errors",
+       file = './results/tables/anova_pbi_errors.html')
+
+# Save model summary
+tab_model(mod_pc3,
+          title = "Model estimates for linear mixed effects regression analysis of PBI errors",
+          file = './results/tables/summary_pbi_errors.html')
 
 
+# --- 9) Analyse PBI RT --------------------------------------------------------
 
+# Set order of levels of factor block
+pci$block <- factor(pci$block, levels = c("Performance", "Practice"))
 
+# Effect code cathegorical variables
+contrasts(pci$block) <-  contr.sum(2); contrasts(pci$block)
 
+# -- Change default contrasts options ! --
+options(contrasts = c("contr.sum", "contr.poly"))
+
+# Require packages for analysis
+getPacks(c('lme4', 'lmerTest',
+           'sjPlot',
+           'emmeans'))
+
+# Model change in A-cue bias
 mod_pc4 <- lmer(data = pci, 
                 pbi_rt ~ block + (1|id)) 
+# ANOVA table
+anova(mod_pc4, ddf = 'Kenward-Roger')
+# model diagnostics
+plot_model(mod_pc4, 'diag')
+
+# --- 9.1) Remove outliers (optional) ------------------------------------------
+# --- REFIT MODEL WITHOUT OUTLIERS (RESULTS DON'T CHANGE MUCH)
+dat4_rm <- stdResid(pci, mod_pc4, plot = T, show.bound = T)
+
+# Model refitted without outliers
+pci_no_out <- filter(dat4_rm, Outlier == 0)
+mod_pc4 <- lmer(data = pci_no_out,
+                pbi_rt ~ block + (1|id))
+# Anova table for final model
+anova(mod_pc4, ddf = 'Kenward-Roger')
+# Regression table for model
+summary(mod_pc4, ddf = 'Kenward-Roger')
+# model diagnostics for final model
+plot_model(mod_pc4, 'diag')
+# forest plot for standardised erstimates
+std_est_4 <- plot_model(mod_pc4, 'std2'); std_est_4
+
+# --- 9.2) Compute summary statistics for A_bias model -------------------------
+# Compute effect sizes (semi partial R2)
 amod <- anova(mod_pc4, ddf = 'Kenward-Roger'); amod
+amod <-  as.data.frame(amod); amod
+amod$sp.R2 <- R2(amod); amod
 
-dat_rm <- stdResid(data = pci,
-                   model = mod_pc4, 
-                   plot = T, 
-                   return.data = T, 
-                   show.bound = T)
+# Save anova table
+tab_df(round(amod, 5), 
+       title = "Anova results for linear mixed effects regression analysis of PBI RT",
+       file = './results/tables/anova_pbi_rt.html')
 
-pci$block <- as.factor(pci$block)
-contrasts(dat_rm$block) <-  contr.treatment(2, 2); contrasts(dat_rm$block)
+# Save model summary
+tab_model(mod_pc4,
+          title = "Model estimates for linear mixed effects regression analysis of PBI RT",
+          file = './results/tables/summary_pbi_rt.html')
 
-mod_pc4 <- lmer(data = filter(dat_rm, Outlier == 0), 
-                pbi_rt ~ block + (1|id)) 
-summary(mod_pc4)
 
-amod <- anova(mod_pc4, ddf = 'Kenward-Roger'); amod
-amod$sR2 <-R2(amod); amod
+# --- 10) Final figure for submission ------------------------------------------
+# Standardised model estimates
+# A bias
+mod_est <- std_est + geom_hline(yintercept = 0, linetype = 2) +
+  scale_y_continuous(limits = c(-1, 1)) +
+  scale_x_discrete(labels = c('Performance-Practice')) +
+  scale_color_viridis(option = 'A', discrete = T, direction = 1, end = .55) +
+  
+  geom_segment(aes(x = -Inf, y = -1, xend = -Inf, yend = 1), 
+               color = 'black', size = rel(1), linetype = 1) +
+  geom_segment(aes(x = 1, y = -Inf, xend = 1, yend = -Inf), 
+               color = 'black', size = rel(1), linetype = 1) +
+  
+  labs(title = 'A) Standardised beta-weights of Condition \n (Performance - Practice)',
+       subtitle = 'A-bias',
+       y = 'Estimate') + 
+  
+  theme_classic() + 
+  theme(plot.title = element_text(color = 'black', size = 13, face = 'bold',
+                                  margin = margin(b = 10), hjust = .5),
+        plot.subtitle = element_text(color = 'black', size = 13, face = 'bold',
+                                     margin = margin(b = 10), hjust=.5),
+        axis.line = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.text.x = element_text(color = 'black', size = 12),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()); mod_est
 
-emmip(mod_pc4, ~ block)
+# d prime
+mod_est2 <- std_est_2 + geom_hline(yintercept = 0, linetype = 2) +
+  scale_y_continuous(limits = c(-1, 1)) +
+  scale_x_discrete(labels = c('Performance-Practice')) +
+  scale_color_viridis(option = 'A', discrete = T, direction = -1, end = .55) +
+  
+  geom_segment(aes(x = -Inf, y = -1, xend = -Inf, yend = 1), 
+               color = 'black', size = rel(1), linetype = 1) +
+  geom_segment(aes(x = 1, y = -Inf, xend = 1, yend = -Inf), 
+               color = 'black', size = rel(1), linetype = 1) +
+  
+  labs(subtitle = "d' Context",
+       y = 'Estimate') + 
+  
+  theme_classic() + 
+  theme(plot.title = element_blank(),
+        plot.subtitle = element_text(color = 'black', size = 13, face = 'bold',
+                                     margin = margin(b = 10), hjust=.5),
+        axis.line = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.text.x = element_text(color = 'black', size = 12),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()); mod_est2
 
+# PBI errors
+mod_est3 <- std_est_3 + geom_hline(yintercept = 0, linetype = 2) +
+  scale_y_continuous(limits = c(-1, 1)) +
+  scale_x_discrete(labels = c('Performance-Practice')) +
+  scale_color_viridis(option = 'A', discrete = T, direction = 1, end = .55) +
+  
+  geom_segment(aes(x = -Inf, y = -1, xend = -Inf, yend = 1), 
+               color = 'black', size = rel(1), linetype = 1) +
+  geom_segment(aes(x = 1, y = -Inf, xend = 1, yend = -Inf), 
+               color = 'black', size = rel(1), linetype = 1) +
+  
+  labs(subtitle = 'PBI errors',
+       y = 'Estimate') + 
+  
+  theme_classic() + 
+  theme(plot.title = element_blank(),
+        plot.subtitle = element_text(color = 'black', size = 13, face = 'bold',
+                                     margin = margin(b = 10), hjust=.5),
+        axis.line = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.text.x = element_text(color = 'black', size = 12),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()); mod_est3
+
+# PBI RT
+mod_est4 <- std_est_4 + geom_hline(yintercept = 0, linetype = 2) +
+  scale_y_continuous(limits = c(-1, 1)) +
+  scale_x_discrete(labels = c('Performance-Practice')) +
+  scale_color_viridis(option = 'A', discrete = T, direction = 1, end = .55) +
+  
+  geom_segment(aes(x = -Inf, y = -1, xend = -Inf, yend = 1), 
+               color = 'black', size = rel(1), linetype = 1) +
+  geom_segment(aes(x = 1, y = -Inf, xend = 1, yend = -Inf), 
+               color = 'black', size = rel(1), linetype = 1) +
+  
+  labs(subtitle = "PBI RT",
+       y = 'Estimate') + 
+  
+  theme_classic() + 
+  theme(plot.title = element_blank(),
+        plot.subtitle = element_text(color = 'black', size = 13, face = 'bold',
+                                     margin = margin(b = 10), hjust=.5),
+        axis.line = element_blank(),
+        axis.title.x = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(t = 15)),
+        axis.title.y = element_text(color = 'black', face = 'bold', size = 13,
+                                    margin = margin(r = 15)),
+        axis.text.x = element_text(color = 'black', size = 12),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()); mod_est4
+
+
+# Create margins for each plot in fugure
+margin_1 = theme(plot.margin = unit(c(0.01, 0.25, 0, 0.25), "cm"))
+margin_2 = theme(plot.margin = unit(c(1, 0.25, 0.5, 0.25), "cm"))
+margin_3 = theme(plot.margin = unit(c(0.6, 0.25, 0.5, 0.25), "cm"))
+margin_4 = theme(plot.margin = unit(c(0.5, 0.25, 0, 0.25), "cm"))
+
+
+# Arrange plot in single figure
+fig_pbis <- grid.arrange(grobs = list(mod_est + margin_1,
+                                      mod_est2 + margin_2, 
+                                      mod_est3 + margin_3,
+                                      mod_est4 + margin_4), 
+                         layout_matrix = rbind(c(1),
+                                               c(2),
+                                               c(3),
+                                               c(4))); fig_pbis
+
+# Save figure
+ggsave(fig_pbis, filename = './results/figs/fig_pbis.pdf',
+       width = 5, height = 6)

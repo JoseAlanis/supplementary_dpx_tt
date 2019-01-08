@@ -170,6 +170,11 @@ tab_df(round(amod, 5),
        title = 'Anova results for linear mixed effects regression analysis of log-error-rates',
        file = './results/tables/anova_error_rates.html')
 
+# Save model summary
+tab_model(mod_err,
+          title = 'Model estimates for linear mixed effects regression analysis of error rates',
+          file = './results/tables/summary_errors.html')
+
 
 # Descriptives
 mean_err_0 <- errors %>%
