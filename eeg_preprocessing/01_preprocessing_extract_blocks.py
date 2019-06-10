@@ -53,9 +53,6 @@ montage = mne.channels.read_montage(kind='biosemi64')
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
-# channels that should be ignored during the artifact rejection procedure
-ignore_ch = {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}
-
 # ========================================================================
 # ------------ loop through files and extract blocks  --------------------
 for file in files:
