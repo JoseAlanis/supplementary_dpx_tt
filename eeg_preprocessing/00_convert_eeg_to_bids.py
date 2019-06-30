@@ -12,18 +12,18 @@
 # ------------------- import relevant extensions -------------------------
 import glob
 import os
-
 import re
-import numpy as np
+from datetime import datetime
 
-import mne
+from mne.channels import read_montage
+from mne.io import read_raw_bdf
+from mne import find_events
+
 from mne_bids import write_raw_bids, make_bids_basename
-from mne_bids.utils import print_dir_tree
 
 # ========================================================================
-# --- global settings
-# --- prompt user to set project path
-root_path = input("Type path to project directory: ")
+# global settings
+root_path = input("Type path to project directory: ")  # prompt user to set path
 
 # look for directory
 if os.path.isdir(root_path):
@@ -31,36 +31,33 @@ if os.path.isdir(root_path):
 else:
     raise NameError('Directory not found!')
 
-# path to eeg files
-data_path = os.path.join(root_path, 'data/sourcedata/')
-
+# input path
+data_path = os.path.join(root_path, 'data/dpx_tt_bdfs/')
+# output path
 output_path = os.path.join(root_path, 'data_bids/')
-# # path for output
-# derivatives_path = os.path.join(root_path, 'derivatives')
-#
-# # create directory for save
-# if not os.path.isdir(derivatives_path):
-#     os.mkdir(derivatives_path)
-#     os.mkdir(os.path.join(derivatives_path, 'extract_blocks'))
-#
-# output_path = os.path.join(derivatives_path, 'extract_blocks')
-#
-# files to be analysed
-files = glob.glob(os.path.join(data_path, 'sub-*', 'eeg/*.bdf'))
 
-# ========================================================================
-# -- define further variables that apply to all files in the data set
+# files to be analysed
+files = sorted(glob.glob(os.path.join(data_path, '*.bdf')))
+
+# subjects data
+demographics = os.path.join(root_path, 'metadata/subject_demographics.txt')
+demographics = [line.replace('\"', '') for line in open(demographics)]
+demographics = [line.replace('\n', '') for line in demographics]
+demographics = [line.split('\t') for line in demographics]
+demographics = demographics[1:]
+
+# define further variables that apply to all files in the data set
 task = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = mne.channels.read_montage(kind='biosemi64')
+montage = read_montage(kind='biosemi64')
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # ========================================================================
 # ------------ loop through files and extract blocks  --------------------
-for file in files:
+for ind, file in enumerate(files):
 
     # --- 1) set up paths and file names -----------------------
     filepath, filename = os.path.split(file)
@@ -68,31 +65,60 @@ for file in files:
     subj = re.findall(r'\d+', filename)[0].rjust(3, '0')
 
     # --- 2) import the data -----------------------------------
-    raw = mne.io.read_raw_bdf(file,
-                              montage=montage,
-                              preload=False,
-                              exclude=exclude)
+    raw = read_raw_bdf(file,
+                       montage=montage,
+                       preload=False,
+                       exclude=exclude)
 
-    # reset `orig_time` in annotations
-    raw.annotations.orig_time = None
+    # --- 3) subject info --------------------------------------
+    # create tuple containing approx. birthday
+    date_of_record = raw.annotations.orig_time
+    date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
+    year_of_birth = int(date.split('-')[0]) - int(demographics[ind][2])
+    approx_birthday = (year_of_birth,
+                       int(date[5:].split('-')[0]),
+                       int(date[5:].split('-')[1]))
 
-    # Get events
-    events = mne.find_events(raw,
-                             stim_channel='Status',
-                             output='onset',
-                             min_duration=0.002)
+    # add subject info
+    raw.info['subject_info'] = dict(id=int(subj),
+                                    sex=int(demographics[ind][1]),
+                                    birthday=approx_birthday)
+
+    # --- 4) events info ---------------------------------------
+    # extract events
+    events = find_events(raw,
+                         stim_channel='Status',
+                         output='onset',
+                         min_duration=0.002)
+
     # event ids
     events_id = {'correct_target_button': 13,
                  'correct_non_target_button': 12,
                  'incorrect_target_button': 113,
                  'incorrect_non_target_button': 112,
-                 'a_cue': 70,
-                 'b_cue': range(71, 76),
-                 'x_probe': 76,
-                 'y_probe': range(77, 82)}
+                 'cue_0': 70,
+                 'cue_1': 71,
+                 'cue_2': 72,
+                 'cue_3': 73,
+                 'cue_4': 74,
+                 'cue_5': 75,
+                 'probe_0': 76,
+                 'probe_1': 77,
+                 'probe_2': 78,
+                 'probe_3': 79,
+                 'probe_4': 80,
+                 'probe_5': 81}
+
+    # --- 5) export to bids ------------------------------------
+    # file name compliant with bids
+    bids_basename = make_bids_basename(
+        subject=subj,
+        task=task)
 
     # save in bids format
-    bids_basename = make_bids_basename(subject=subj, task=task)
-
-    write_raw_bids(raw, bids_basename, output_path, event_id=events_id,
-                   events_data=events, overwrite=True)
+    write_raw_bids(raw,
+                   bids_basename,
+                   output_path,
+                   event_id=events_id,
+                   events_data=events,
+                   overwrite=True)
