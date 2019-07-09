@@ -15,6 +15,8 @@ import os
 import re
 from datetime import datetime
 
+from pandas import read_csv
+
 from mne.channels import read_montage
 from mne.io import read_raw_bdf
 from mne import find_events
@@ -32,19 +34,16 @@ else:
     raise NameError('Directory not found!')
 
 # input path
-data_path = os.path.join(root_path, 'data/dpx_tt_bdfs/')
-# output path
-output_path = os.path.join(root_path, 'data_bids/')
+data_path = os.path.join(root_path, 'sourcedata/')
+
+# path to subject demographics
+subj_demo = os.path.join(root_path, 'subject_data/subject_demographics.tsv')
 
 # files to be analysed
-files = sorted(glob.glob(os.path.join(data_path, '*.bdf')))
+files = sorted(glob.glob(os.path.join(data_path, 'sub-*', '*.bdf')))
 
 # subjects data
-demographics = os.path.join(root_path, 'metadata/subject_demographics.txt')
-demographics = [line.replace('\"', '') for line in open(demographics)]
-demographics = [line.replace('\n', '') for line in demographics]
-demographics = [line.split('\t') for line in demographics]
-demographics = demographics[1:]
+subj_demo = read_csv(subj_demo, sep='\t', header=0)
 
 # define further variables that apply to all files in the data set
 task = 'dpxtt'
@@ -73,15 +72,17 @@ for ind, file in enumerate(files):
     # --- 3) subject info --------------------------------------
     # create tuple containing approx. birthday
     date_of_record = raw.annotations.orig_time
+    # unix timestap to date
     date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
-    year_of_birth = int(date.split('-')[0]) - int(demographics[ind][2])
+    # compute approx. date of birth
+    year_of_birth = int(date.split('-')[0]) - subj_demo.iloc[ind].age
     approx_birthday = (year_of_birth,
                        int(date[5:].split('-')[0]),
                        int(date[5:].split('-')[1]))
 
     # add subject info
     raw.info['subject_info'] = dict(id=int(subj),
-                                    sex=int(demographics[ind][1]),
+                                    sex=subj_demo.iloc[ind].sex,
                                     birthday=approx_birthday)
 
     # --- 4) events info ---------------------------------------
@@ -118,7 +119,7 @@ for ind, file in enumerate(files):
     # save in bids format
     write_raw_bids(raw,
                    bids_basename,
-                   output_path,
+                   root_path,
                    event_id=events_id,
                    events_data=events,
                    overwrite=True)
