@@ -1,22 +1,25 @@
-# --- Jose C. Garcia Alanis
+# --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.6.2
+# --- Python 3.7.3 / mne 0.18.1
 #
-# --- EEG prepossessing - DPX TT
-# --- Version May 2019
+# --- eeg pre-processing for DPX TT
+# --- version: june 2019
 #
-# --- import data, drop "flat channels",
+# --- import data, drop flat channels,
 # --- extract task blocks
 
 # ========================================================================
 # ------------------- import relevant extensions -------------------------
 import glob
-import os
+import os.path as op
+from os import mkdir
 
 import re
 import numpy as np
 
-import mne
+from mne import create_info, find_events, concatenate_raws
+from mne.io import read_raw_bdf
+from mne.channels import read_montage
 
 # ========================================================================
 # --- global settings
@@ -24,31 +27,32 @@ import mne
 root_path = input("Type path to project directory: ")
 
 # look for directory
-if os.path.isdir(root_path):
+if op.isdir(root_path):
     print("Setting 'root_path' to ", root_path)
 else:
     raise NameError('Directory not found!')
 
 # path to eeg files
-data_path = os.path.join(root_path, 'sourcedata')
-# path for output
-derivatives_path = os.path.join(root_path, 'derivatives')
+data_path = op.join(root_path, 'sub-*')
+# # path for output
+derivatives_path = op.join(root_path, 'derivatives')
 
-# create directory for save
-if not os.path.isdir(derivatives_path):
-    os.mkdir(derivatives_path)
-    os.mkdir(os.path.join(derivatives_path, 'extract_blocks'))
+# create directory for derivatives
+if not op.isdir(derivatives_path):
+    mkdir(derivatives_path)
+    mkdir(op.join(derivatives_path, 'extract_blocks'))
 
-output_path = os.path.join(derivatives_path, 'extract_blocks')
+# path for saving script output
+output_path = op.join(derivatives_path, 'extract_blocks')
 
 # files to be analysed
-files = glob.glob(os.path.join(data_path, 'sub-*', 'eeg/*.bdf'))
+files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 
 # ========================================================================
 # -- define further variables that apply to all files in the data set
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = mne.channels.read_montage(kind='biosemi64')
+montage = read_montage(kind='biosemi64')
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
@@ -58,20 +62,20 @@ exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 for file in files:
 
     # --- 1) set up paths and file names -----------------------
-    filepath, filename = os.path.split(file)
+    filepath, filename = op.split(file)
     # subject in question
-    subj = re.match('sub-[0-9][0-9]', filename).group(0)
+    subj = re.findall(r'\d+', filename)[0].rjust(3, '0')
 
     # --- 2) import the data -----------------------------------
-    raw = mne.io.read_raw_bdf(file,
-                              montage=montage,
-                              preload=True,
-                              exclude=exclude)
+    raw = read_raw_bdf(file,
+                       montage=montage,
+                       preload=True,
+                       exclude=exclude)
     # reset `orig_time` in annotations
     raw.annotations.orig_time = None
 
     # --- 2) check channels variance  ------------------------
-    # look for channels with zero (or near zero variance; i.e., flat lines)
+    # look for channels with zero (or near zero variance; i.e., flat-lines)
     chans_to_drop = []
     for chan in raw.info['ch_names']:
         if (np.std(raw.get_data(raw.info['ch_names'].index(chan))) * 1e6) < 10.:
@@ -101,7 +105,7 @@ for file in files:
             types.append('stim')
 
     # create custom info for subj file
-    info_custom = mne.create_info(chans, sfreq, types, montage)
+    info_custom = create_info(chans, sfreq, types, montage)
     # description / name of experiment
     info_custom['description'] = task_description
     # overwrite file info
@@ -112,10 +116,10 @@ for file in files:
 
     # --- 5) get events in data --------------------------------
     # Get events
-    events = mne.find_events(raw,
-                             stim_channel='Status',
-                             output='onset',
-                             min_duration=0.002)
+    events = find_events(raw,
+                         stim_channel='Status',
+                         output='onset',
+                         min_duration=0.002)
     # Cue events
     cue_evs = events[(events[:, 2] >= 70) & (events[:, 2] <= 75), ]
     print('\n There are', len(cue_evs), 'events.')
@@ -157,41 +161,44 @@ for file in files:
     raw_bl2 = raw.copy().crop(tmin=b2s, tmax=b2e)
 
     # --- 9) concatenate data ----------------------------------
-    raw_blocks = mne.concatenate_raws([raw_bl1, raw_bl2])
+    raw_blocks = concatenate_raws([raw_bl1, raw_bl2])
 
     # --- 10) lower the sample rate  ---------------------------
     raw_blocks.resample(sfreq=256.)
 
     # --- 11) save segmented data  -----------------------------
     # create directory for save
-    if not os.path.exists(os.path.join(output_path, subj)):
-        os.mkdir(os.path.join(output_path, subj))
+    if not op.exists(op.join(output_path, 'sub-%s' % subj)):
+        mkdir(op.join(output_path, 'sub-%s' % subj))
 
     # save file
-    raw_blocks.save(os.path.join(output_path, subj, '%s_task_blocks-raw.fif' % subj),  # noqa
+    raw_blocks.save(op.join(output_path, 'sub-' + str(subj),
+                            'sub-%s_task_blocks-raw.fif' % subj),
                     overwrite=True)
 
     # --- 12) save script summary  ------------------------------
     # get events in segmented data
-    events = mne.find_events(raw_blocks,
-                             stim_channel='Status',
-                             output='onset',
-                             min_duration=0.002)
+    events = find_events(raw_blocks,
+                         stim_channel='Status',
+                         output='onset',
+                         min_duration=0.002)
     # number of trials
     nr_trials = len(events[(events[:, 2] >= 70) & (events[:, 2] <= 75), ])
 
     # write summary
-    name = '%s_task_blocks_summary' % subj
-    sfile = open(os.path.join(output_path, subj, '%s.txt' % name), 'w')
-    # block info
-    sfile.write('Block 1 from ' + str(round(b1s, 2)) + ' to ' + str(round(b1e, 2)) + '\n')  # noqa
-    sfile.write('Block 2 from ' + str(round(b2s, 2)) + ' to ' + str(round(b2e, 2)) + '\n')  # noqa
-    sfile.write('Block 1 length:\n%s\n' % round(b1e - b1s, 2))
-    sfile.write('Block 2 length:\n%s\n' % round(b2e - b2s, 2))
+    name = 'sub-%s_task_blocks_summary.txt' % subj
+    sfile = open(op.join(output_path, 'sub-%s', name) % subj, 'w')
+    #     # block info
+    sfile.write('Block_1_from_' + str(round(b1s, 2)) + '_to_' +
+                str(round(b1e, 2)) + '\n')
+    sfile.write('Block 2 from ' + str(round(b2s, 2)) + '_to_' +
+                str(round(b2e, 2)) + '\n')
+    sfile.write('Block_1_length:\n%s\n' % round(b1e - b1s, 2))
+    sfile.write('Block_2_length:\n%s\n' % round(b2e - b2s, 2))
     # number of trials in file
     sfile.write('number_of_trials_found:\n%s\n' % nr_trials)
     # channels dropped
-    sfile.write('channes_with_zero_variance:\n')
+    sfile.write('channels_with_zero_variance:\n')
     for ch in chans_to_drop:
         sfile.write('%s\n' % ch)
     sfile.close()
