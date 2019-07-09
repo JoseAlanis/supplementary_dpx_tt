@@ -34,7 +34,8 @@ else:
 
 # path to eeg files
 data_path = op.join(root_path, 'sub-*')
-# # path for output
+
+# path for saving output
 derivatives_path = op.join(root_path, 'derivatives')
 
 # create directory for derivatives
