@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from mne.io import read_raw_fif
-from mne import pick_types, find_events, Annotations
+from mne import pick_types, Annotations
 
 # ========================================================================
 # --- global settings
@@ -78,20 +78,14 @@ for file in files:
     # sampling frequency
     sfreq = raw.info['sfreq']
 
-    # --- 3) get events in dataset ----------------------------
-    events = find_events(raw,
-                         stim_channel='Status',
-                         output='onset',
-                         min_duration=0.002)
-
-    # --- 4) mark bad channels and segments --------------------
+    # --- 3) mark bad channels and segments --------------------
     # channels that should be ignored during the artifact detection procedure
     ignore_ch = {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}
 
     # update dict
     ignore_ch.update({raw.info['ch_names'][chan] for chan in picks_no_eeg})
 
-    # --- 4.1) filter the data ---------------------------------
+    # --- 3.1) filter the data ---------------------------------
     # copy the file
     raw_copy = raw.copy()
     # apply filter
@@ -101,7 +95,7 @@ for file in files:
                     method='fir', phase='zero', fir_window='hamming',
                     fir_design='firwin')
 
-    # --- 4.2) find distorted segments in data -----------------
+    # --- 3.2) find distorted segments in data -----------------
     # copy of data
     data = raw_copy.get_data(picks_eeg)
 
@@ -129,21 +123,37 @@ for file in files:
             annotated_channels.append(channels[ch_ix[int(np.argmax(peak))]])
     # If artifact found create annotations for raw data
     if len(times) > 0:
-        # Save onsets
-        annotations_df = pd.DataFrame(times)
-        annotations_df.columns = ['Onsets']
-        # Include one second before artifact onset
-        onsets = (annotations_df['Onsets'].values / sfreq) - 1
-        # Merge with previous annotations
-        duration = [2] * len(onsets) + list(raw_copy.annotations.duration)
-        labels = ['Bad'] * len(onsets) + list(
-            raw_copy.annotations.description)
-        onsets = list(onsets)
-        # Append onsets of previous annotations
-        for i in range(0, len(list(raw_copy.annotations.onset))):
-            onsets.append(list(raw_copy.annotations.onset)[i])
-        # Create new annotation info
-        annotations = Annotations(onsets, duration, labels)
+        # get first time
+        first_time = raw_copy._first_time
+        # column names
+        annot_infos = ['onset', 'duration', 'description']
+
+        # save onsets
+        onsets = np.asarray(times)
+        # include one second before artifact onset
+        onsets = ((onsets / sfreq) + first_time) - 1
+        # durations and labels
+        duration = np.repeat(2, len(onsets))
+        description = np.repeat('Bad', len(onsets))
+
+        # get annotations in data
+        artifacts = np.array((onsets, duration, description)).T
+        # to pandas data frame
+        artifacts = pd.DataFrame(artifacts,
+                                 columns=annot_infos)
+        # annotations from data
+        annotations = pd.DataFrame(raw_copy.annotations)
+        annotations = annotations[annot_infos]
+
+        # merge artifacts and previous annotations
+        artifacts = artifacts.append(annotations, ignore_index=True)
+
+        # create new annotation info
+        annotations = Annotations(artifacts['onset'],
+                                  artifacts['duration'],
+                                  artifacts['description'],
+                                  orig_time=raw_copy.annotations.orig_time)
+        # apply to raw data
         raw_copy.set_annotations(annotations)
 
     # save total annotated time
@@ -157,7 +167,7 @@ for file in files:
     bad_chans = [chan for chan, value in frequency_of_annotation.items() if value >= int(threshold)]  # noqa
     raw_copy.info['bads'] = bad_chans
 
-    # --- 4.3) plot data and check for inconsistencies  ----------
+    # --- 3.3) plot data and check for inconsistencies  ----------
     raw_copy.plot(scalings=dict(eeg=50e-6),
                   n_channels=len(raw.info['ch_names']),
                   bad_color='red',
@@ -213,34 +223,50 @@ for file in files:
                 annotated_channels.append(channels[ch_ix[int(np.argmax(peak))]])
         # If artifact found create annotations for raw data
         if len(times) > 0:
-            # Save onsets
-            annotations_df = pd.DataFrame(times)
-            annotations_df.columns = ['Onsets']
-            # Include one second before artifact onset
-            onsets = (annotations_df['Onsets'].values / sfreq) - 1
-            # Merge with previous annotations
-            duration = [2] * len(onsets) + list(raw_copy.annotations.duration)
-            labels = ['Bad'] * len(onsets) + list(
-                raw_copy.annotations.description)
-            onsets = list(onsets)
-            # Append onsets of previous annotations
-            for i in range(0, len(list(raw_copy.annotations.onset))):
-                onsets.append(list(raw_copy.annotations.onset)[i])
-            # Create new annotation info
-            annotations = Annotations(onsets, duration, labels)
+            # get first time
+            first_time = raw_copy._first_time
+            # column names
+            annot_infos = ['onset', 'duration', 'description']
+
+            # save onsets
+            onsets = np.asarray(times)
+            # include one second before artifact onset
+            onsets = ((onsets / sfreq) + first_time) - 1
+            # durations and labels
+            duration = np.repeat(2, len(onsets))
+            description = np.repeat('Bad', len(onsets))
+
+            # get annotations in data
+            artifacts = np.array((onsets, duration, description)).T
+            # to pandas data frame
+            artifacts = pd.DataFrame(artifacts,
+                                     columns=annot_infos)
+            # annotations from data
+            annotations = pd.DataFrame(raw_copy.annotations)
+            annotations = annotations[annot_infos]
+
+            # merge artifacts and previous annotations
+            artifacts = artifacts.append(annotations, ignore_index=True)
+
+            # create new annotation info
+            annotations = Annotations(artifacts['onset'],
+                                      artifacts['duration'],
+                                      artifacts['description'],
+                                      orig_time=raw_copy.annotations.orig_time)
+            # apply to raw data
             raw_copy.set_annotations(annotations)
 
-    # --- 5) plot data and check for inconsistencies  ----------
+    # --- 4) plot data and check for inconsistencies  ----------
     raw_copy.plot(scalings=dict(eeg=50e-6),
                   n_channels=len(raw.info['ch_names']),
                   bad_color='red',
                   block=True)
 
-    # --- 6) RE-REFERENCE TO AVERAGE OF 64 ELECTRODES  ---------
+    # --- 5) re-reference data to average of 64 electrodes  ----
     raw_copy.set_eeg_reference(ref_channels='average',
                                projection=False)
 
-    # --- 7) save segmented data  -----------------------------
+    # --- 6) save segmented data  -----------------------------
     # create directory for save
     if not op.exists(op.join(output_path, 'sub-%s' % subj)):
         mkdir(op.join(output_path, 'sub-%s' % subj))

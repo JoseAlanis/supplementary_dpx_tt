@@ -1,49 +1,99 @@
-# --- Jose C. Garcia Alanis
+# --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.6.2
+# --- Python 3.7.3 / mne 0.18.1
 #
-# --- EEG prepossessing - DPX TT
-# --- Version Jul 2018
+# --- eeg pre-processing for DPX TT
+# --- version: june 2019
 #
-# --- ICA decomposition, ICA summary,
-# --- save results
+# --- ica decomposition, find eog artifacts,
+# --- export ica solution
 
 # =================================================================================================
 # ------------------------------ Import relevant extensions ---------------------------------------
-import glob
-import os
-import mne
-from mne import io
+import os.path as op
+from os import mkdir
+from glob import glob
+
+from re import findall
+
+import numpy as np
+import pandas as pd
+
+from mne import find_events, Annotations
+from mne.io import read_raw_fif
 from mne.preprocessing import ICA
 
 # ========================================================================
-# --- GLOBAL SETTINGS
-# --- SET PATH TO .bdf-files, summary files and output
-data_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_mne_raws/'
-summary_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_ica_summary/'
-ica_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_mne_ica/'
+# --- global settings
+# --- prompt user to set project path
+root_path = input("Type path to project directory: ")
 
-# Threshold for plotting
-clip = None
+# look for directory
+if op.isdir(root_path):
+    print("Setting 'root_path' to ", root_path)
+else:
+    raise NameError('Directory not found!')
+
+# derivatives path
+derivatives_path = op.join(root_path, 'derivatives')
+
+# path to eeg files
+data_path = op.join(derivatives_path, 'extract_blocks')
+
+# create directory for output
+if not op.isdir(op.join(derivatives_path, 'ica')):
+    mkdir(op.join(derivatives_path, 'ica'))
+
+# path for saving output
+output_path = op.join(derivatives_path, 'ica')
+
+# files to be analysed
+files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # === LOOP THROUGH FILES AND RUN PRE-PROCESSING ==========================
-for file in glob.glob(os.path.join(data_path, '*-raw.fif')):
+for file in files:
 
     # --- 1) Set up paths and file names -----------------------
-    filepath, filename = os.path.split(file)
-    filename, ext = os.path.splitext(filename)
-    print('Ready for ' + filename)
+    filepath, filename = op.split(file)
+    # subject in question
+    subj = findall(r'\d+', filename)[0].rjust(3, '0')
+
     # --- 2) READ IN THE DATA ----------------------------------
     # Import preprocessed data.
-    raw = io.read_raw_fif(file, preload=True)
-    # Check info
-    print(raw.info)
+    raw = read_raw_fif(file, preload=True)
+
+    # sampling rate
+    sfreq = raw.info['sfreq']
+
+    # annotations in data
+    annot_infos = ['onset', 'duration', 'description']
+    annotations = pd.DataFrame(raw.annotations)
+    annotations = annotations[annot_infos]
+
     # --- 3) GET EVENT INFORMATION -----------------------------
     # Get events
-    evs = mne.find_events(raw,
-                          stim_channel='Stim',
-                          output='onset',
-                          min_duration=0.002)
+    events = find_events(raw,
+                         stim_channel='Status',
+                         output='onset',
+                         min_duration=0.002)
+    # events as data frame
+    events = pd.DataFrame(events,
+                          columns=annot_infos)
+
+    # onsets to seconds
+    events.onset = events.onset / sfreq
+
+    events = events.append(annotations, ignore_index=True)
+    events = events.sort_values(by=['onset'])
+
+    annotations = Annotations(events['onset'],
+                              events['duration'],
+                              events['description'],
+                              orig_time=date_of_record)
+
+    raw.set_annotations(annotations)
+
+    raw_copy.plot(n_channels=67, scalings=dict(eeg=1e-4))
 
     # --- 2) ICA DECOMPOSITION --------------------------------
     # ICA parameters

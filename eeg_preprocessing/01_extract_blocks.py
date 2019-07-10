@@ -16,8 +16,10 @@ from os import mkdir
 
 import re
 import numpy as np
+import pandas as pd
 
-from mne import create_info, find_events, concatenate_raws
+from mne import create_info, find_events, Annotations, \
+    events_from_annotations, concatenate_raws
 from mne.io import read_raw_bdf
 from mne.channels import read_montage
 
@@ -72,8 +74,8 @@ for file in files:
                        montage=montage,
                        preload=True,
                        exclude=exclude)
-    # reset `orig_time` in annotations
-    raw.annotations.orig_time = None
+    # reset orig_time
+    date_of_record = raw.annotations.orig_time
 
     # --- 2) check channels variance  ------------------------
     # look for channels with zero (or near zero variance; i.e., flat-lines)
@@ -111,43 +113,44 @@ for file in files:
     info_custom['description'] = task_description
     # overwrite file info
     raw.info = info_custom
+    # date of measurement
+    raw.info['meas_date'] = (date_of_record, 0)
 
     # --- 4) set reference to remove residual line noise  ------
     raw.set_eeg_reference(['Cz'], projection=False)
 
-    # --- 5) get events in data --------------------------------
-    # Get events
+    # --- 5) find cue events in data ---------------------------
+    # get events
     events = find_events(raw,
                          stim_channel='Status',
                          output='onset',
                          min_duration=0.002)
-    # Cue events
-    cue_evs = events[(events[:, 2] >= 70) & (events[:, 2] <= 75), ]
-    print('\n There are', len(cue_evs), 'events.')
+
+    # cue events
+    cue_evs = events[(events[:, 2] >= 70) & (events[:, 2] <= 75)]
 
     # latencies and difference between two consecutive cues
-    latencies = cue_evs[:, 0]
-    diffs = [y - x for x, y in zip(latencies, latencies[1:])]
+    latencies = cue_evs[:, 0] / sfreq
+    diffs = [(y - x) for x, y in zip(latencies, latencies[1:])]
 
     # Get first event after a long break (i.e., pauses between blocks),
     # Time difference in between blocks should be  > 10 seconds)
-    diffs = [diff / sfreq for diff in diffs]
     breaks = [diff for diff in range(len(diffs)) if diffs[diff] > 10]
     print('\n Identified breaks at positions', breaks)
 
     # --- 7) save start and end points of task blocks  ---------
     # start first block
-    b1s = (latencies[breaks[0] + 1] - (2 * sfreq)) / sfreq
+    b1s = latencies[breaks[0] + 1] - 2
     # end of first block
-    b1e = (latencies[(breaks[1])] + (6 * sfreq)) / sfreq
+    b1e = latencies[breaks[1]] + 6
 
     # start second block
-    b2s = (latencies[breaks[1] + 1] - (2 * sfreq)) / sfreq
+    b2s = latencies[breaks[1] + 1] - 2
     # end of first block
     if len(breaks) > 2:
-        b2e = (latencies[breaks[2]] + (6 * sfreq)) / sfreq
+        b2e = latencies[breaks[2]] + 6
     else:
-        b2e = (latencies[-1] + (6 * sfreq)) / sfreq
+        b2e = latencies[-1] + 6
 
     # block durations
     print('Block 1 from', round(b1s, 3), 'to', round(b1e, 3), '\nBlock length ',
@@ -158,6 +161,7 @@ for file in files:
     # --- 8) extract block data --------------------------------
     # Block 1
     raw_bl1 = raw.copy().crop(tmin=b1s, tmax=b1e)
+
     # Block 2
     raw_bl2 = raw.copy().crop(tmin=b2s, tmax=b2e)
 
@@ -167,7 +171,37 @@ for file in files:
     # --- 10) lower the sample rate  ---------------------------
     raw_blocks.resample(sfreq=256.)
 
-    # --- 11) save segmented data  -----------------------------
+    # --- 11) extract events and save them in annotations ------
+    annot_infos = ['onset', 'duration', 'description']
+    annotations = pd.DataFrame(raw_blocks.annotations)
+    annotations = annotations[annot_infos]
+
+    # path to events .tsv
+    events = find_events(raw_blocks,
+                         stim_channel='Status',
+                         output='onset',
+                         min_duration=0.002)
+    # import events
+    events = pd.DataFrame(events, columns=annot_infos)
+    events.onset = events.onset / raw_blocks.info['sfreq']
+
+    # merge with annotations
+    events = events.append(annotations, ignore_index=True)
+    # sort by onset´
+    events = events.sort_values(by=['onset'])
+
+    # crate annotations object
+    annotations = Annotations(events['onset'],
+                              events['duration'],
+                              events['description'],
+                              orig_time=date_of_record)
+    # apply to raw data
+    raw_blocks.set_annotations(annotations)
+
+    # drop stimulus channel
+    raw_blocks.drop_channels('Status')
+
+    # --- 12) save segmented data  -----------------------------
     # create directory for save
     if not op.exists(op.join(output_path, 'sub-%s' % subj)):
         mkdir(op.join(output_path, 'sub-%s' % subj))
@@ -177,14 +211,12 @@ for file in files:
                             'sub-%s_task_blocks-raw.fif' % subj),
                     overwrite=True)
 
-    # --- 12) save script summary  ------------------------------
-    # get events in segmented data
-    events = find_events(raw_blocks,
-                         stim_channel='Status',
-                         output='onset',
-                         min_duration=0.002)
+    # --- 13) save script summary  ------------------------------
+    # get cue events in segmented data
+    events = events_from_annotations(raw_blocks, regexp='^[7][0-5]')[0]
+
     # number of trials
-    nr_trials = len(events[(events[:, 2] >= 70) & (events[:, 2] <= 75), ])
+    nr_trials = len(events)
 
     # write summary
     name = 'sub-%s_task_blocks_summary.txt' % subj
