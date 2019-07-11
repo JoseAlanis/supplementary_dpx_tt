@@ -49,7 +49,7 @@ output_path = op.join(derivatives_path, 'artifact_detection')
 files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
-# ------------ loop through files and extract blocks  --------------------
+# ----------- loop through files and detect artifacts --------------------
 for file in files:
 
     # --- 1) set up paths and file names -----------------------

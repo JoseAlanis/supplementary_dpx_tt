@@ -18,7 +18,7 @@ from re import findall
 
 from mne import pick_types
 from mne.io import read_raw_fif
-from mne.preprocessing import ICA, create_eog_epochs
+from mne.preprocessing import ICA
 
 # ========================================================================
 # --- global settings
@@ -47,7 +47,8 @@ output_path = op.join(derivatives_path, 'ica')
 # files to be analysed
 files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
-# === LOOP THROUGH FILES AND RUN PRE-PROCESSING ==========================
+# ========================================================================
+# ---------------- loop through files and fit ICA ------------------------
 for file in files:
 
     # --- 1) Set up paths and file names -----------------------

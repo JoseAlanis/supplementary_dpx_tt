@@ -55,7 +55,7 @@ montage = read_montage(kind='biosemi64')
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # ========================================================================
-# ------------ loop through files and extract blocks  --------------------
+# --------- loop through files and make bids-files blocks  ---------------
 for ind, file in enumerate(files):
 
     # --- 1) set up paths and file names -----------------------
