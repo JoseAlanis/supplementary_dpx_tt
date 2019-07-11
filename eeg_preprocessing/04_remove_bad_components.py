@@ -118,7 +118,7 @@ for file in files[24:]:
                                 'sub-%s_comp_%d.pdf' % (subj, ind)))
             del fig
 
-    # --- 6) remove bad components --------------------------------
+    # --- 6) remove bad components -----------------------------
     # apply ica weights to raw data
     ica.apply(raw)
 
