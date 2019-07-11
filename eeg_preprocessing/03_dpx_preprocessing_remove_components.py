@@ -1,104 +1,137 @@
-# --- Jose C. Garcia Alanis
+# --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.6.2
+# --- Python 3.7.3 / mne 0.18.1
 #
-# --- EEG prepossessing - DPX TT
-# --- Version Sep 2018
+# --- eeg pre-processing for DPX TT
+# --- version: june 2019
 #
-# --- Inspect ICA components, remove bad components,
-# --- save results
-
-# =================================================================================================
-# ------------------------------ Import relevant extensions ---------------------------------------
-import glob
-import os
-import mne
-from mne import io
+# --- remove bad components,
+# --- export pruned data
 
 # ========================================================================
-# --- GLOBAL SETTINGS
-# --- SET PATH TO .bdf-files, summary files and output
-data_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_mne_raws/'
-ica_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_mne_ica//'
-summary_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_mne_summary/'
-pruned_path = '/Users/Josealanis/Documents/Experiments/dpx_tt/eeg/dpx_tt_mne_pruned/'
+# ------------------- import relevant extensions -------------------------
+import os.path as op
+from os import mkdir
+from glob import glob
 
+from re import findall
 
-for file in glob.glob(os.path.join(data_path, '*.fif')):
+from mne import pick_types
+from mne.io import read_raw_fif
+from mne.preprocessing import read_ica, create_eog_epochs
+
+# ========================================================================
+# --- global settings
+# --- prompt user to set project path
+root_path = input("Type path to project directory: ")
+
+# look for directory
+if op.isdir(root_path):
+    print("Setting 'root_path' to ", root_path)
+else:
+    raise NameError('Directory not found!')
+
+# derivatives path
+derivatives_path = op.join(root_path, 'derivatives')
+
+# path to eeg files
+data_path = op.join(derivatives_path, 'artifact_detection')
+# path to ica files
+ica_path = op.join(derivatives_path, 'ica')
+
+# create directory for output
+if not op.isdir(op.join(derivatives_path, 'pruned_with_ica')):
+    mkdir(op.join(derivatives_path, 'pruned_with_ica'))
+
+# path for saving output
+output_path = op.join(derivatives_path, 'pruned_with_ica')
+
+# files to be analysed
+files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
+
+# ========================================================================
+# ---------------- loop through files and fit ICA ------------------------
+for file in files:
 
     # --- 1) Set up paths and file names -----------------------
-    filepath, filename = os.path.split(file)
-    filename, ext = os.path.splitext(filename)
-    print(filename)
+    filepath, filename = op.split(file)
+    # subject in question
+    subj = findall(r'\d+', filename)[0].rjust(3, '0')
 
-    # --- 2) Read in the data ----------------------------------
-    raw = io.read_raw_fif(file,
-                          preload=True)
+    # create directory for save
+    if not op.exists(op.join(output_path, 'sub-%s' % subj)):
+        mkdir(op.join(output_path, 'sub-%s' % subj))
 
-    raw.drop_channels(['EXG1', 'EXG2'])
+    # --- 2) import the data -----------------------------------
+    raw = read_raw_fif(file, preload=True)
 
-    # Check info
-    print(raw.info)
+    # get eogs
+    eogs = pick_types(raw.info, eog=True)
 
-    # --- 3) Get event information -----------------------------
-    #  Get events
-    evs = mne.find_events(raw,
-                          stim_channel='Stim',
-                          output='onset',
-                          min_duration=0.002)
+    if len(eogs) > 2:
+        raw.drop_channels(raw.info['ch_names'][-3])
+        raw.drop_channels(raw.info['ch_names'][-1])
 
-    # --- 4) Import ICA weights --------------------------------
-    ica = mne.preprocessing.read_ica(ica_path + filename.split('-')[0] + '-ica.fif')
+    # --- 4) import ICA weights --------------------------------
+    ica = read_ica(op.join(ica_path,
+                           'sub-%s' % subj,
+                           'sub-%s_ica_weights-ica.fif' % subj))
 
-    # --- 5) Plot components time series -----------------------
-    # Picks to plot
-    picks = mne.pick_types(raw.info,
-                           meg=False,
-                           eeg=True,
-                           eog=False,
-                           stim=True)
+    # --- 5) find "eog" components via correlation -------------
+    # create "blink ERP"
+    eog_average = create_eog_epochs(raw,
+                                    reject=dict(eeg=3e-4),
+                                    picks='eeg').average()
+    # get single blink trials
+    eog_epochs = create_eog_epochs(raw,
+                                   reject=dict(eeg=3e-4))
+    # find matching components via correlation
+    eog_inds, scores = ica.find_bads_eog(eog_epochs,
+                                         reject_by_annotation=True)
 
-    # Select bad components for rejection
-    ica.plot_sources(raw, title=str(filename),
-                     exclude=None,
-                     picks=range(0, 25),
-                     block=True)
+    # --- 6) inspect component time series  --------------------
+    ica.plot_sources(raw, exclude=eog_inds, block=True)
 
-    # Save bad components
-    bad_comps = ica.exclude.copy()
+    # --- 7) look at correlation scores of components ----------
+    fig = ica.plot_scores(scores, exclude=ica.exclude)
+    fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                        'sub-%s_r_scores.pdf' % subj))
+    del fig
 
-    # --- 4) Remove bad components -----------------------------
+    # look at source time course
+    fig = ica.plot_sources(eog_average, exclude=ica.exclude)
+    fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                        'sub-%s_sources.pdf' % subj))
+    del fig
+
+    # save component properties
+    for ind in ica.exclude:
+        fig = ica.plot_properties(eog_epochs,
+                                  picks=ind,
+                                  psd_args={'fmax': 35.},
+                                  image_args={'sigma': 1.})[0]
+        fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                            'sub-%s_comp_%d.pdf' % (subj, ind)))
+        del fig
+
+    # --- 6) remove bad components --------------------------------
+    # apply ica weights to raw data
     ica.apply(raw)
 
-    # --- 5) Remove pruned data --------------------------------
-    # Plot to check data
-    clip = None
-    raw.plot(n_channels=66, title=str(filename),
-             scalings=dict(eeg=5e-5),
-             events=evs,
+    # --- 7) check results -------------------------------------
+    # plot pruned data
+    raw.plot(n_channels=67, title=str(filename),
+             scalings=dict(eeg=50e-6),
              bad_color='red',
-             clipping=clip,
              block=True)
 
-    # --- 6) Write summary about removed components ------------
-    name = str(filename.split('-')[0]) + '_ica_summary'
-    file = open(summary_path + '%s.txt' % name, 'w')
-    # Number of Trials
-    file.write('bad components\n')
-    for cp in bad_comps:
-        file.write('%s\n' % cp)
-    # Close file
-    file.close()
+    # --- 8) save pruned data -----------------------------------
+    # pick electrodes to save
+    picks = pick_types(raw.info,
+                       eeg=True,
+                       eog=False)
 
-    # --- 7) Save raw file -----------------------------------
-    # Pick electrode to use
-    picks = mne.pick_types(raw.info,
-                           meg=False,
-                           eeg=True,
-                           eog=False,
-                           stim=True)
-
-    # Save pruned data
-    raw.save(pruned_path + filename.split('-')[0] + '_pruned-raw.fif',
-             picks=picks,
+    # save file
+    raw.save(op.join(output_path, 'sub-%s' % subj,
+                     'sub-%s_pruned-raw.fif' % subj),
              overwrite=True)
