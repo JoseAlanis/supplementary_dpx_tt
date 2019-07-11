@@ -51,7 +51,7 @@ files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
 # ---------------- loop through files and fit ICA ------------------------
-for file in files:
+for file in files[24:]:
 
     # --- 1) Set up paths and file names -----------------------
     filepath, filename = op.split(file)
@@ -80,17 +80,20 @@ for file in files:
     # --- 5) find "eog" components via correlation -------------
     # create "blink ERP"
     eog_average = create_eog_epochs(raw,
-                                    reject=dict(eeg=3e-4),
+                                    reject_by_annotation=True,
                                     picks='eeg').average()
     # get single blink trials
     eog_epochs = create_eog_epochs(raw,
-                                   reject=dict(eeg=3e-4))
+                                   reject_by_annotation=True)
     # find matching components via correlation
     eog_inds, scores = ica.find_bads_eog(eog_epochs,
                                          reject_by_annotation=True)
 
     # --- 6) inspect component time series  --------------------
-    ica.plot_sources(raw, exclude=eog_inds, block=True)
+    if eog_inds:
+        ica.plot_sources(raw, exclude=eog_inds, block=True)
+    else:
+        ica.plot_sources(raw, block=True)
 
     # --- 7) look at correlation scores of components ----------
     fig = ica.plot_scores(scores, exclude=ica.exclude)
@@ -105,14 +108,15 @@ for file in files:
     del fig
 
     # save component properties
-    for ind in ica.exclude:
-        fig = ica.plot_properties(eog_epochs,
-                                  picks=ind,
-                                  psd_args={'fmax': 35.},
-                                  image_args={'sigma': 1.})[0]
-        fig.savefig(op.join(output_path, 'sub-%s' % subj,
-                            'sub-%s_comp_%d.pdf' % (subj, ind)))
-        del fig
+    if len(eog_epochs) > 1:
+        for ind in ica.exclude:
+            fig = ica.plot_properties(eog_epochs,
+                                      picks=ind,
+                                      psd_args={'fmax': 35.},
+                                      image_args={'sigma': 1.})[0]
+            fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                                'sub-%s_comp_%d.pdf' % (subj, ind)))
+            del fig
 
     # --- 6) remove bad components --------------------------------
     # apply ica weights to raw data
