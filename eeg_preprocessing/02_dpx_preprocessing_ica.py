@@ -8,20 +8,17 @@
 # --- ica decomposition, find eog artifacts,
 # --- export ica solution
 
-# =================================================================================================
-# ------------------------------ Import relevant extensions ---------------------------------------
+# ========================================================================
+# ------------------- import relevant extensions -------------------------
 import os.path as op
 from os import mkdir
 from glob import glob
 
 from re import findall
 
-import numpy as np
-import pandas as pd
-
-from mne import find_events, Annotations
+from mne import pick_types
 from mne.io import read_raw_fif
-from mne.preprocessing import ICA
+from mne.preprocessing import ICA, create_eog_epochs
 
 # ========================================================================
 # --- global settings
@@ -38,7 +35,7 @@ else:
 derivatives_path = op.join(root_path, 'derivatives')
 
 # path to eeg files
-data_path = op.join(derivatives_path, 'extract_blocks')
+data_path = op.join(derivatives_path, 'artifact_detection')
 
 # create directory for output
 if not op.isdir(op.join(derivatives_path, 'ica')):
@@ -58,69 +55,46 @@ for file in files:
     # subject in question
     subj = findall(r'\d+', filename)[0].rjust(3, '0')
 
-    # --- 2) READ IN THE DATA ----------------------------------
-    # Import preprocessed data.
+    # --- 2) import preprocessed data --------------------------
     raw = read_raw_fif(file, preload=True)
 
     # sampling rate
     sfreq = raw.info['sfreq']
 
-    # annotations in data
-    annot_infos = ['onset', 'duration', 'description']
-    annotations = pd.DataFrame(raw.annotations)
-    annotations = annotations[annot_infos]
-
-    # --- 3) GET EVENT INFORMATION -----------------------------
-    # Get events
-    events = find_events(raw,
-                         stim_channel='Status',
-                         output='onset',
-                         min_duration=0.002)
-    # events as data frame
-    events = pd.DataFrame(events,
-                          columns=annot_infos)
-
-    # onsets to seconds
-    events.onset = events.onset / sfreq
-
-    events = events.append(annotations, ignore_index=True)
-    events = events.sort_values(by=['onset'])
-
-    annotations = Annotations(events['onset'],
-                              events['duration'],
-                              events['description'],
-                              orig_time=date_of_record)
-
-    raw.set_annotations(annotations)
-
-    raw_copy.plot(n_channels=67, scalings=dict(eeg=1e-4))
-
-    # --- 2) ICA DECOMPOSITION --------------------------------
+    # --- 3) set up ica parameters -----------------------------
     # ICA parameters
-    n_components = 25
-    method = 'extended-infomax'
-    # decim = None
-    reject = dict(eeg=4e-4)
+    n_components = 20
+    method = 'picard'
+    reject = dict(eeg=3e-4)
 
     # Pick electrodes to use
-    picks = mne.pick_types(raw.info,
-                           meg=False,
-                           eeg=True,
-                           eog=False,
-                           stim=False)
+    picks = pick_types(raw.info,
+                       eeg=True,
+                       eog=False)
 
+    # --- 4) fit ica --------------------------------------------
     # ICA parameters
     ica = ICA(n_components=n_components,
-              method=method)
+              method=method,
+              fit_params=dict(ortho=False,
+                              extended=True))
 
-    # Fit ICA
+    # fit ICA
     ica.fit(raw.copy().filter(1, 50),
             picks=picks,
             reject=reject)
 
-    ica.save(ica_path + filename.split('-')[0] + '-ica.fif')
+    # --- 5) save ica weights ----------------------------------
+    # create directory for save
+    if not op.exists(op.join(output_path, 'sub-%s' % subj)):
+        mkdir(op.join(output_path, 'sub-%s' % subj))
 
-    # --- 3) PLOT RESULTING COMPONENTS ------------------------
-    # Plot components
-    ica_fig = ica.plot_components(picks=range(0, 25), show=False)
-    ica_fig.savefig(summary_path + filename.split('-')[0] + '_ica.pdf')
+    # save file
+    ica.save(op.join(output_path, 'sub-%s' % subj,
+                     'sub-%s_ica_weights-ica.fif' % subj))
+
+    # --- 6) plot resulting components ------------------------
+    # plot components
+    ica_fig = ica.plot_components(picks=range(0, 20), show=False)
+    ica_fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                            'sub-%s_ica.pdf' % subj))

@@ -89,11 +89,14 @@ for file in files:
     # copy the file
     raw_copy = raw.copy()
     # apply filter
-    raw_copy.filter(l_freq=0.1, h_freq=50, picks=['eeg', 'eog'],
-                    filter_length='auto',
-                    l_trans_bandwidth='auto', h_trans_bandwidth='auto',
-                    method='fir', phase='zero', fir_window='hamming',
-                    fir_design='firwin')
+    raw_copy = raw_copy.filter(l_freq=0.1, h_freq=50, picks=['eeg', 'eog'],
+                               filter_length='auto',
+                               l_trans_bandwidth='auto',
+                               h_trans_bandwidth='auto',
+                               method='fir',
+                               phase='zero',
+                               fir_window='hamming',
+                               fir_design='firwin')
 
     # --- 3.2) find distorted segments in data -----------------
     # copy of data
@@ -159,12 +162,14 @@ for file in files:
     # save total annotated time
     total_time = sum(duration)
     # save frequency of annotation per channel
-    frequency_of_annotation = {x: annotated_channels.count(x)*2 for x in annotated_channels}  # noqa
+    frequency_of_annotation = {x: annotated_channels.count(x)*2
+                               for x in annotated_channels}
     # if exceeds 0.9% of total time --> mark as bad channel
     threshold = raw_copy.times[-1] * .01
 
     # save bads in info structure
-    bad_chans = [chan for chan, value in frequency_of_annotation.items() if value >= int(threshold)]  # noqa
+    bad_chans = [chan for chan, value in frequency_of_annotation.items()
+                 if value >= int(threshold)]
     raw_copy.info['bads'] = bad_chans
 
     # --- 3.3) plot data and check for inconsistencies  ----------
@@ -188,11 +193,14 @@ for file in files:
                                   mode='accurate')
 
         # apply filter
-        raw_copy.filter(l_freq=0.1, h_freq=50, picks=['eeg', 'eog'],
-                        filter_length='auto',
-                        l_trans_bandwidth='auto', h_trans_bandwidth='auto',
-                        method='fir', phase='zero', fir_window='hamming',
-                        fir_design='firwin')
+        raw_copy = raw_copy.filter(l_freq=0.1, h_freq=50, picks=['eeg', 'eog'],
+                                   filter_length='auto',
+                                   l_trans_bandwidth='auto',
+                                   h_trans_bandwidth='auto',
+                                   method='fir',
+                                   phase='zero',
+                                   fir_window='hamming',
+                                   fir_design='firwin')
 
         # --- find distorted segments in data ----------------------
         # copy of data
@@ -272,8 +280,8 @@ for file in files:
         mkdir(op.join(output_path, 'sub-%s' % subj))
 
     # save file
-    raw_copy.save(op.join(output_path, 'sub-' + str(subj),
-                          'sub-%s_artifact_detection-raw.fif' % subj),  # noqa
+    raw_copy.save(op.join(output_path, 'sub-%s' % subj,
+                          'sub-%s_artifact_detection-raw.fif' % subj),
                   overwrite=True)
 
     # write summary
