@@ -51,7 +51,7 @@ files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
 # ------------ loop through files and remove bad components --------------
-for file in files[24:]:
+for file in files:
 
     # --- 1) Set up paths and file names -----------------------
     filepath, filename = op.split(file)
