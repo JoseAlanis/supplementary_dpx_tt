@@ -50,7 +50,7 @@ output_path = op.join(derivatives_path, 'pruned_with_ica')
 files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
-# ---------------- loop through files and fit ICA ------------------------
+# ------------ loop through files and remove bad components --------------
 for file in files[24:]:
 
     # --- 1) Set up paths and file names -----------------------
