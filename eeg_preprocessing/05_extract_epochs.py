@@ -341,14 +341,39 @@ for file in files:
                                     (new_evs[:, 2] == 39))]
 
     # create list with reactions based on cue and probe event ids
-    reaction_cues, reaction_probes, cues, probes = [], [], [], []
+    same_stim, reaction_cues, reaction_probes, cues, probes = [], [], [], [], []
     for cue, probe in zip(cue_events[:, 2], probe_events[:, 2]):
         response, cue = cue_event_id_rev[cue].split(' ')
         reaction_cues.append(response)
+        # save cue
         cues.append(cue)
 
+        # save response
         response, probe = probe_event_id_rev[probe].split(' ')
         reaction_probes.append(response)
+
+        # check if same type of combination was shown in the previous trail
+        if len(probes):
+            stim = same_stim[-1]
+            if probe in {'AX', 'AY'}:
+                if probes[-1] == probe:
+                    stim += 1
+                    same_stim.append(stim)
+                else:
+                    same_stim.append(0)
+            elif probe in {'BX', 'BY'}:
+                if probes[-1] in {'BX', 'BY'}:
+                    stim += 1
+                    same_stim.append(stim)
+                else:
+                    same_stim.append(0)
+            else:
+                same_stim.append(np.nan)
+        else:
+            stim = 0
+            same_stim.append(0)
+
+        # save probe
         probes.append(probe)
 
     # create metadata
@@ -356,6 +381,7 @@ for file in files:
                 'trial': range(0, trial),
                 'cue': cues,
                 'probe': probes,
+                'run': same_stim,
                 'reaction_cues': reaction_cues,
                 'reaction_probes': reaction_probes,
                 'rt': rt}
