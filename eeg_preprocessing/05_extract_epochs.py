@@ -356,13 +356,13 @@ for file in files:
         if len(probes):
             stim = same_stim[-1]
             if probe in {'AX', 'AY'}:
-                if probes[-1] == probe:
+                if probes[-1] in {'AX', 'AY'} and response == 'Correct' and reaction_probes[-2] == 'Correct':
                     stim += 1
                     same_stim.append(stim)
                 else:
                     same_stim.append(0)
             elif probe in {'BX', 'BY'}:
-                if probes[-1] in {'BX', 'BY'}:
+                if probes[-1] in {'BX', 'BY'} and response == 'Correct' and reaction_probes[-2] == 'Correct':
                     stim += 1
                     same_stim.append(stim)
                 else:
@@ -403,9 +403,10 @@ for file in files:
                         tmax=2.5,
                         baseline=None,
                         preload=True,
-                        reject_by_annotation=False,
+                        reject_by_annotation=True,
                         picks=picks,
-                        reject=reject)
+                        # reject=reject
+                        )
 
     # create probe epochs
     probe_epochs = Epochs(raw, probe_events, probe_event_id,
@@ -415,9 +416,10 @@ for file in files:
                           tmax=2.,
                           baseline=None,
                           preload=True,
-                          reject_by_annotation=False,
+                          reject_by_annotation=True,
                           picks=picks,
-                          reject=reject)
+                          # reject=reject
+                          )
 
     # --- 7) save epochs info ------------------------------------
     # clean cue epochs
