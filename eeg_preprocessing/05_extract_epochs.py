@@ -355,20 +355,11 @@ for file in files:
         # check if same type of combination was shown in the previous trail
         if len(probes):
             stim = same_stim[-1]
-            if probe in {'AX', 'AY'}:
-                if probes[-1] in {'AX', 'AY'} and response == 'Correct' and reaction_probes[-2] == 'Correct':
-                    stim += 1
-                    same_stim.append(stim)
-                else:
-                    same_stim.append(0)
-            elif probe in {'BX', 'BY'}:
-                if probes[-1] in {'BX', 'BY'} and response == 'Correct' and reaction_probes[-2] == 'Correct':
-                    stim += 1
-                    same_stim.append(stim)
-                else:
-                    same_stim.append(0)
+            if probe == probes[-1] and response == 'Correct' and reaction_probes[-2] == 'Correct':
+                stim += 1
+                same_stim.append(stim)
             else:
-                same_stim.append(np.nan)
+                same_stim.append(0)
         else:
             stim = 0
             same_stim.append(0)
