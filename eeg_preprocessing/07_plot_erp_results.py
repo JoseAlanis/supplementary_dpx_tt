@@ -242,29 +242,29 @@ for electrode in electrodes:
     cmap = 'magma'
     colors = {'A Cue': 0, 'B Cue': 0.6}
     fig, ax = plt.subplots(figsize=(9, 3.5))
-    ax = plot_compare_evokeds({'A Cue': Grand_Average_A.copy().crop(tmin=-.5),
-                               'B Cue': Grand_Average_B.copy().crop(tmin=-.5)},
-                              ylim=dict(eeg=[-8, 6]),
-                              picks=pick,
-                              invert_y=False,
-                              cmap=cmap,
-                              colors=colors,
-                              show_legend=3,
-                              show_sensors=2,
-                              truncate_xaxis=False,
-                              axes=ax)
+    plot_compare_evokeds({'A Cue': Grand_Average_A.copy().crop(tmin=-.5),
+                          'B Cue': Grand_Average_B.copy().crop(tmin=-.5)},
+                         ylim=dict(eeg=[-8, 6]),
+                         picks=pick,
+                         invert_y=False,
+                         cmap=cmap,
+                         colors=colors,
+                         show_legend=3,
+                         show_sensors=2,
+                         truncate_xaxis=False,
+                         axes=ax)
 
-    ax.axes[0].fill_between(times,
-                            upper_a[pick]*1e6,
-                            lower_a[pick]*1e6,
-                            alpha=0.25,
-                            color=cm.magma(0))
+    ax.fill_between(times,
+                    upper_a[pick]*1e6,
+                    lower_a[pick]*1e6,
+                    alpha=0.2,
+                    color=cm.magma(0))
 
-    ax.axes[0].fill_between(times,
-                            upper_b[pick]*1e6,
-                            lower_b[pick]*1e6,
-                            alpha=0.25,
-                            color=cm.magma(0.6))
+    ax.fill_between(times,
+                    upper_b[pick]*1e6,
+                    lower_b[pick]*1e6,
+                    alpha=0.25,
+                    color=cm.magma(0.6))
     #
     # ax = plot_compare_evokeds({'A Cue': [val.crop(tmin=-.5) for val in
     #                                      erps_a_cue.values()],
@@ -280,6 +280,6 @@ for electrode in electrodes:
     #                           axes=ax,
     #                           ci=.95)
 
-    ax.axes[0].set_xlim(-.5, 2.5)
-    ax.axes[0].xaxis.set_ticks(np.arange(-.5, 2.5+0.1, .25))
+    ax.set_xlim(-.5, 2.5)
+    ax.xaxis.set_ticks(np.arange(-.5, 2.5+0.1, .25))
     plt.plot()
