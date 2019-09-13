@@ -21,7 +21,7 @@ from matplotlib import cm
 from matplotlib.collections import PatchCollection
 
 import numpy as np
-from scipy.stats import zscore
+from scipy import stats
 
 from mne import grand_average
 from mne.viz import plot_compare_evokeds
@@ -84,44 +84,77 @@ for subject in cues_dict.keys():
         cues_dict[subject]['Correct A', 'Correct B'].apply_baseline(
             (-.3, -.05)).crop(tmin=-.25, tmax=2.45)
 
-# only use A-cues
-# for subject in cues_dict.keys():
-#     # extract correct trials
-#     cues_dict[subject] = \
-#         cues_dict[subject]['Correct A'].apply_baseline(
-#             (-.3, -.05)).crop(tmin=-.25, tmax=2.45)
+# only use AX trials
+for subject in cues_dict.keys():
+    # extract AX trials
+    cues_dict[subject] = \
+        cues_dict[subject][cues_dict[subject].metadata['probe'] == 'AX']
+    # extract corrects
+    cues_dict[subject] = \
+        cues_dict[subject][cues_dict[subject].metadata['reaction_probes'] == 'Correct']
+    # apply baseline correction
+    cues_dict[subject] = \
+        cues_dict[subject].apply_baseline(
+            (-.3, -.05)).crop(tmin=-.25, tmax=2.45)
 
+# only use AX trials
+for subject in probes_dict.keys():
+    # extract AX trials
+    probes_dict[subject] = \
+        probes_dict[subject][probes_dict[subject].metadata['probe'] == 'AX']
+    # extract corrects
+    probes_dict[subject] = \
+        probes_dict[subject][probes_dict[subject].metadata['reaction_probes'] == 'Correct']
+    # apply baseline correction
+    probes_dict[subject] = \
+        probes_dict[subject].apply_baseline(
+            (-.3, -.05)).crop(tmin=-.25, tmax=1.)
+
+# only use A trials
+for subject in probes_dict.keys():
+    # extract correct trials
+    probes_dict[subject] = \
+        probes_dict[subject]['Correct AX', 'Correct AY'].apply_baseline(
+            (-.3, -.05)).crop(tmin=-.25, tmax=1)
+
+# erps_ax = {subj: probes_dict[subj][probes_dict[subj].metadata['probe'] == 'AX'].average()  # noqa
+#            for subj in probes_dict}
+#
+# erps_ay = {subj: probes_dict[subj][probes_dict[subj].metadata['probe'] == 'AY'].average()  # noqa
+#            for subj in probes_dict}
 
 # --- 2) regression parameters ----------------------------------
 # subjects
 subjects = list(cues_dict.keys())
 
 # variables to be used in the analysis (i.e., predictors)
-predictors = ['intercept', 'cue a - cue b']
-# predictors = ['intercept', 'set-count']
+# predictors = ['intercept', 'cue a - cue b']
+# predictors = ['intercept', 'ax - ay']
+predictors = ['intercept', 'set-count']
 
 # number of predictors
 n_predictors = len(predictors)
 
 # save epochs information (needed for creating a homologous
 # epochs object containing linear regression result)
-epochs_info = cues_dict[str(subjects[0])].info
+epochs_info = probes_dict[str(subjects[0])].info
 
 # number of channels and number of time points in each epoch
 # we'll use this information later to bring the results of the
 # the linear regression algorithm into an eeg-like format
 # (i.e., channels x times points)
 n_channels = len(epochs_info['ch_names'])
-n_times = len(cues_dict[str(subjects[0])].times)
+n_times = len(probes_dict[str(subjects[0])].times)
 
 # also save times first time-point in data
-times = cues_dict[str(subjects[0])].times
-tmin = cues_dict[str(subjects[0])].tmin
+times = probes_dict[str(subjects[0])].times
+tmin = probes_dict[str(subjects[0])].tmin
 
 # --- 3) create empty objects  for the storage of results ------
 
 # place holders for bootstrap samples
-betas = np.zeros((len(predictors[1:]), len(cues_dict.values()),
+betas = np.zeros((len(predictors[1:]),
+                  len(probes_dict.values()),
                   n_channels * n_times))
 
 # dicts for results evoked-objects
@@ -132,7 +165,7 @@ r2_evoked = dict()
 # --- 4) run regression analysis for each subject ---------------
 
 # loop through subjects, set up and fit linear model
-for subj_ind, subject in enumerate(cues_dict.values()):
+for subj_ind, subject in enumerate(probes_dict.values()):
 
     # --- 1) create design matrix ---
     # use epochs metadata
@@ -143,9 +176,11 @@ for subj_ind, subject in enumerate(cues_dict.values()):
 
     # effect code contrast for categorical variable (i.e., condition a vs. b,
     # block 0 vs block 1)
-    design['cue a - cue b'] = np.where(design['cue'] == 'A', -1, 1)
+    # design['cue a - cue b'] = np.where(design['cue'] == 'A', -1, 1)
+    # design['ax - ay'] = np.where(design['probe'] == 'AX', -1, 1)
     # design['set-count'] = design['run']
-    # design['set-count'] = zscore(design['run'])
+    design['set-count'] = stats.zscore(design['run'])
+    # design['set-count'] = pd.cut(design['run'], 2, labels=False)
 
     # order columns of design matrix
     design = design[predictors]
@@ -209,13 +244,16 @@ subjects = [str(subj) for subj in subjects]
 
 # extract cue betas for each subject
 cue_effect = [betas_evoked[subj]['cue a - cue b'] for subj in subjects]
-# block_effect = [betas_evoked[subj]['set-count'] for subj in subjects]
+block_effect = [betas_evoked[subj]['set-count'] for subj in subjects]
+probe_effect = [betas_evoked[subj]['ax - ay'] for subj in subjects]
 cue_r2 = [r2_evoked[subj] for subj in subjects]
 
-# average betas
+# weights for averaging
 weights = np.repeat(1 / len(subjects), len(subjects))
+# average betas
 ga_cue_effect = combine_evoked(cue_effect, weights=weights)
-# ga_block_effect = combine_evoked(block_effect, weights=weights)
+ga_probe_effect = combine_evoked(probe_effect, weights=weights)
+ga_block_effect = combine_evoked(block_effect, weights=weights)
 # average r-squared
 ga_cue_r2 = combine_evoked(cue_r2, weights=weights)
 
@@ -231,7 +269,8 @@ fig = ga_cue_r2.plot_joint(ts_args=ts_args,
                            topomap_args=topomap_args,
                            title='Proportion of variance explained by '
                                  'predictors',
-                           times=[.22, .59, 1.02])
+                           # times=[.22, .59, 1.02]
+                           )
 fig.axes[0].set_ylabel('R-squared')
 
 # --- 6) compute bootstrap confidence interval
@@ -254,14 +293,14 @@ connectivity, ch_names = find_ch_connectivity(epochs_info, ch_type='eeg')
 connectivity = _setup_connectivity(connectivity, n_tests, n_times)
 
 # threshond for clustering
-threshold = 35.
+# threshold = 10.
 
 # # alternative threshold such as pr(>F) [WIP]
-# tail = 1
-# p_thresh = 0.05 / (1 + (1 == 0))
-# dfn = 1
-# dfd = len(betas) - 1
-# threshold = stats.f.ppf(1. - p_thresh, dfn, dfd)
+tail = 1
+p_thresh = 0.01 / (1 + (1 == 0))
+dfn = 1
+dfd = len(betas) - 1
+threshold = stats.f.ppf(1. - p_thresh, dfn, dfd)
 
 # # or TFCE
 # threshold = dict(start=.1, step=.1)
@@ -378,6 +417,10 @@ f_vals = f_vals.reshape((n_times, n_channels))
 
 # --- 9) create evoked object containing the resulting t-values
 group_t = dict()
+group_t['cue a - cue b'] = EvokedArray(t_vals,
+                                       # t_vals,
+                                       epochs_info,
+                                       tmin)
 group_t['cue a - cue b'] = EvokedArray(np.transpose(f_vals, (1, 0)),
                                        # t_vals,
                                        epochs_info,
@@ -399,8 +442,8 @@ fig = group_t['cue a - cue b'].plot_image(time_unit='s',
                                           unit=False,
                                           # keep values scale
                                           scalings=dict(eeg=1),
-                                          cmap='Reds',
-                                          clim=dict(eeg=[0, None])
+                                          # cmap='Reds',
+                                          # clim=dict(eeg=[0, None])
                                           )
 fig.axes[1].set_title('F-value')
 fig.axes[0].set_title('Group-level effect of Cue')
@@ -433,7 +476,8 @@ for i_clu, clu_idx in enumerate(good_cluster_inds):
 
     # plot average test statistic and mark significant sensors
     image, _ = plot_topomap(f_map, pos, mask=mask, axes=ax_topo, cmap='Reds',
-                            vmin=np.min, vmax=np.max, show=False)
+                            vmin=np.min, vmax=np.max, show=False,
+                            outlines='skirt')
 
     # create additional axes (for ERF and colorbar)
     divider = make_axes_locatable(ax_topo)
@@ -450,13 +494,14 @@ for i_clu, clu_idx in enumerate(good_cluster_inds):
     if len(ch_inds) > 1:
         title += "s (mean)"
 
-    plot_compare_evokeds(ga_cue_effect,
+    plot_compare_evokeds(ga_probe_effect,
                          title=title,
                          picks=ch_inds,
                          combine='mean',
                          axes=ax_signals,
                          show=False,
                          split_legend=True,
+                         colors=['k'],
                          truncate_yaxis='max_ticks')
 
     # plot temporal cluster extent
