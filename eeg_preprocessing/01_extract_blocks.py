@@ -55,7 +55,7 @@ files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 # -- define further variables that apply to all files in the data set
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = read_montage(kind='biosemi64')
+montage = read_montage(kind='standard_1020')
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
@@ -71,9 +71,10 @@ for file in files:
 
     # --- 2) import the data -----------------------------------
     raw = read_raw_bdf(file,
-                       montage=montage,
                        preload=True,
                        exclude=exclude)
+    # apply montage to data
+    raw.set_montage(montage)
     # reset orig_time
     date_of_record = raw.annotations.orig_time
 
