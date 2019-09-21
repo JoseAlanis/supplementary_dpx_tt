@@ -49,7 +49,7 @@ subj_demo = read_csv(subj_demo, sep='\t', header=0)
 task = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = read_montage(kind='biosemi64')
+montage = read_montage(kind='standard_1020')
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
@@ -65,9 +65,10 @@ for ind, file in enumerate(files):
 
     # --- 2) import the data -----------------------------------
     raw = read_raw_bdf(file,
-                       montage=montage,
                        preload=False,
                        exclude=exclude)
+    # apply montage to data
+    raw.set_montage(montage)
 
     # --- 3) subject info --------------------------------------
     # create tuple containing approx. birthday

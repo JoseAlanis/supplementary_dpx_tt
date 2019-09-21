@@ -140,18 +140,29 @@ for file in files:
     print('\n Identified breaks at positions', breaks)
 
     # --- 7) save start and end points of task blocks  ---------
-    # start first block
-    b1s = latencies[breaks[0] + 1] - 2
-    # end of first block
-    b1e = latencies[breaks[1]] + 6
+    if subj == '041':
+        # start first block
+        b1s = latencies[breaks[2] + 1] - 2
+        # end of first block
+        b1e = latencies[breaks[3]] + 6
 
-    # start second block
-    b2s = latencies[breaks[1] + 1] - 2
-    # end of first block
-    if len(breaks) > 2:
-        b2e = latencies[breaks[2]] + 6
+        # start second block
+        b2s = latencies[breaks[3] + 1] - 2
+        # end of second block
+        b2e = latencies[breaks[4]] + 6
     else:
-        b2e = latencies[-1] + 6
+        # start first block
+        b1s = latencies[breaks[0] + 1] - 2
+        # end of first block
+        b1e = latencies[breaks[1]] + 6
+
+        # start second block
+        b2s = latencies[breaks[1] + 1] - 2
+        # end of second block
+        if len(breaks) > 2:
+            b2e = latencies[breaks[2]] + 6
+        else:
+            b2e = latencies[-1] + 6
 
     # block durations
     print('Block 1 from', round(b1s, 3), 'to', round(b1e, 3), '\nBlock length ',
