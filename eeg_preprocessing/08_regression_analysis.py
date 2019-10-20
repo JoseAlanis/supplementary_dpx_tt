@@ -128,9 +128,9 @@ for subject in probes_dict.keys():
 subjects = list(cues_dict.keys())
 
 # variables to be used in the analysis (i.e., predictors)
-# predictors = ['intercept', 'cue a - cue b']
+predictors = ['intercept', 'cue a - cue b']
 # predictors = ['intercept', 'ax - ay']
-predictors = ['intercept', 'set-count']
+# predictors = ['intercept', 'set-count']
 
 # number of predictors
 n_predictors = len(predictors)
@@ -176,10 +176,10 @@ for subj_ind, subject in enumerate(probes_dict.values()):
 
     # effect code contrast for categorical variable (i.e., condition a vs. b,
     # block 0 vs block 1)
-    # design['cue a - cue b'] = np.where(design['cue'] == 'A', -1, 1)
+    design['cue a - cue b'] = np.where(design['cue'] == 'A', -1, 1)
     # design['ax - ay'] = np.where(design['probe'] == 'AX', -1, 1)
     # design['set-count'] = design['run']
-    design['set-count'] = stats.zscore(design['run'])
+    # design['set-count'] = stats.zscore(design['run'])
     # design['set-count'] = pd.cut(design['run'], 2, labels=False)
 
     # order columns of design matrix
@@ -252,8 +252,8 @@ cue_r2 = [r2_evoked[subj] for subj in subjects]
 weights = np.repeat(1 / len(subjects), len(subjects))
 # average betas
 ga_cue_effect = combine_evoked(cue_effect, weights=weights)
-ga_probe_effect = combine_evoked(probe_effect, weights=weights)
-ga_block_effect = combine_evoked(block_effect, weights=weights)
+# ga_probe_effect = combine_evoked(probe_effect, weights=weights)
+# ga_block_effect = combine_evoked(block_effect, weights=weights)
 # average r-squared
 ga_cue_r2 = combine_evoked(cue_r2, weights=weights)
 
@@ -390,7 +390,7 @@ picks = group_t['phase-coherence'].ch_names[::-1]
 # plot t-values, masking non-significant time points.
 fig = group_t['phase-coherence'].plot_image(time_unit='s',
                                             # picks=picks,
-                                            mask=sig_mask,
+                                            # mask=sig_mask,
                                             xlim=(-.1, None),
                                             unit=False,
                                             # keep values scale

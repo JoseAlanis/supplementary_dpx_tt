@@ -78,12 +78,15 @@ for file in files:
                            'sub-%s_ica_weights-ica.fif' % subj))
 
     # --- 5) find "eog" components via correlation -------------
+    # reject = dict(eeg=3e-4)
     # create "blink ERP"
     eog_average = create_eog_epochs(raw,
+                                    # reject=reject,
                                     reject_by_annotation=True,
                                     picks='eeg').average()
     # get single blink trials
     eog_epochs = create_eog_epochs(raw,
+                                   # reject=reject,
                                    reject_by_annotation=True)
     # find matching components via correlation
     eog_inds, scores = ica.find_bads_eog(eog_epochs,
@@ -91,18 +94,19 @@ for file in files:
 
     # --- 6) inspect component time series  --------------------
     if eog_inds:
-        ica.plot_sources(raw, exclude=eog_inds, block=True)
+        ica.exclude.extend(eog_inds)
+        ica.plot_sources(raw, block=True)
     else:
         ica.plot_sources(raw, block=True)
 
     # --- 7) look at correlation scores of components ----------
-    fig = ica.plot_scores(scores, exclude=ica.exclude)
+    fig = ica.plot_scores(scores)
     fig.savefig(op.join(output_path, 'sub-%s' % subj,
                         'sub-%s_r_scores.pdf' % subj))
     del fig
 
     # look at source time course
-    fig = ica.plot_sources(eog_average, exclude=ica.exclude)
+    fig = ica.plot_sources(eog_average)
     fig.savefig(op.join(output_path, 'sub-%s' % subj,
                         'sub-%s_sources.pdf' % subj))
     del fig

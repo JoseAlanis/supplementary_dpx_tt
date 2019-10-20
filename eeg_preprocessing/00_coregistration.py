@@ -1,3 +1,12 @@
+# --- jose C. garcia alanis
+# --- utf-8
+# --- Python 3.7.3 / mne 0.18.1
+#
+# --- eeg pre-processing for DPX TT
+# --- version: june 2019
+#
+# --- import data,
+# --- convert to bids format
 
 # ========================================================================
 # ------------------- import relevant extensions -------------------------
@@ -8,7 +17,7 @@ from os import mkdir
 import re
 
 from mne.datasets import fetch_fsaverage
-from mne.channels import read_montage
+from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
 from mne.viz import plot_alignment, plot_montage
 from mne import make_forward_solution, sensitivity_map
@@ -42,27 +51,16 @@ output_path = op.join(derivatives_path, 'coreg')
 files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 
 # ========================================================================
-# Download fsaverage files
-fs_dir = fetch_fsaverage(verbose=True)
-subjects_dir = op.dirname(fs_dir)
-
-# The files live in:
-subject = 'fsaverage'
-# trans = op.join(fs_dir, 'bem', 'fsaverage-trans.fif')
-src = op.join(fs_dir, 'bem', 'fsaverage-ico-5-src.fif')
-bem = op.join(fs_dir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
-
-trans = op.join(output_path, 'sub-001/sub-001-trans.fif')
-
-
 # eeg channel names and locations
-montage = read_montage(kind='standard_1020')
+montage = make_standard_montage(kind='biosemi64')
 
-# plot_montage(montage, kind='3d')
+# plot biosemi montage
+plot_montage(montage)
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8',
            'EOGV_oben', 'EOGV_unten', 'EOGH_rechts', 'EOGH_links']
+
 
 # --- 1) set up paths and file names -----------------------
 file = files[0]
@@ -86,8 +84,31 @@ raw.save(op.join(output_path, 'sub-' + str(subj),
                  'sub-%s_for_coreg-raw.fif' % subj),
          overwrite=True)
 
+
+
+
+
+
+
+# Download fsaverage files
+fs_dir = fetch_fsaverage(verbose=True)
+subjects_dir = op.dirname(fs_dir)
+
+# The files live in:
+subject = 'fsaverage'
+# trans = op.join(fs_dir, 'bem', 'fsaverage-trans.fif')
+src = op.join(fs_dir, 'bem', 'fsaverage-ico-5-src.fif')
+bem = op.join(fs_dir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
+
+# trans = op.join(output_path, 'sub-001/sub-001-trans.fif')
+
+
+
+
+
+
 plot_alignment(raw.info, src=src, eeg=['original', 'projected'],
-               trans=trans, dig=True, mri_fiducials=True)
+               trans=None, dig=True, mri_fiducials=True)
 
 fwd = make_forward_solution(raw.info, trans=trans, src=src,
                             bem=bem, eeg=True, mindist=5.0, n_jobs=1)

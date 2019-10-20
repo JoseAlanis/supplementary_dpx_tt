@@ -272,7 +272,7 @@ for file in files:
 
     # --- 5) re-reference data to average of 64 electrodes  ----
     raw_copy.set_eeg_reference(ref_channels='average',
-                               projection=False)
+                               projection=True)
 
     # --- 6) save segmented data  -----------------------------
     # create directory for save

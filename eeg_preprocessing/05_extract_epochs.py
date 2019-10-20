@@ -71,8 +71,25 @@ for file in files:
     raw_break = float(raw_break)
 
     # --- recode cues ---
+    # event ids as int
+    ev_id = {'112': 1,
+             '113': 2,
+             '12': 3,
+             '13': 4,
+             '70': 5,
+             '71': 6,
+             '72': 7,
+             '73': 8,
+             '74': 9,
+             '75': 10,
+             '76': 11,
+             '77': 12,
+             '78': 13,
+             '79': 14,
+             '80': 15,
+             '81': 16}
     #  get events
-    events = events_from_annotations(raw)
+    events = events_from_annotations(raw, event_id=ev_id)
     # copy of events
     new_evs = events[0].copy()
 
@@ -384,7 +401,7 @@ for file in files:
     picks = pick_types(raw.info, eeg=True)
 
     # rejection threshold
-    reject = dict(eeg=300e-6)
+    reject = dict(eeg=400e-6)
 
     # create cue epochs
     cue_epochs = Epochs(raw, cue_events, cue_event_id,
@@ -396,7 +413,8 @@ for file in files:
                         preload=True,
                         reject_by_annotation=True,
                         picks=picks,
-                        # reject=reject
+                        reject=reject,
+                        proj=True
                         )
 
     # create probe epochs
@@ -409,7 +427,8 @@ for file in files:
                           preload=True,
                           reject_by_annotation=True,
                           picks=picks,
-                          # reject=reject
+                          reject=reject,
+                          proj=True
                           )
 
     # --- 7) save epochs info ------------------------------------
@@ -433,19 +452,29 @@ for file in files:
 
     # open summary file
     sum_file = open(name, 'w')
-    sum_file.write('clean_cue_epochs_are_' + str(len(clean_cues)) + '_:\n')
+    # summary of correct trials
+    sum_file.write('correct_ax_epochs_are_' +
+                   str(len(probe_epochs['Correct AX'])) + ':\n')
+    sum_file.write('correct_ay_epochs_are_' +
+                   str(len(probe_epochs['Correct AY'])) + ':\n')
+    sum_file.write('correct_bx_epochs_are_' +
+                   str(len(probe_epochs['Correct BX'])) + ':\n')
+    sum_file.write('correct_by_epochs_are_' +
+                   str(len(probe_epochs['Correct BY'])) + ':\n')
+    # summary of kept and rejected segments
+    sum_file.write('clean_cue_epochs_are_' + str(len(clean_cues)) + ':\n')
     for cue in clean_cues:
         sum_file.write('%s \n' % cue)
 
-    sum_file.write('clean_probe_epochs_are_' + str(len(clean_probes)) + '_:\n')
+    sum_file.write('clean_probe_epochs_are_' + str(len(clean_probes)) + ':\n')
     for probe in clean_probes:
         sum_file.write('%s \n' % probe)
 
-    sum_file.write('clean_cue_epochs_are_' + str(len(bad_cues)) + ':\n')
+    sum_file.write('bad_cue_epochs_are_' + str(len(bad_cues)) + ':\n')
     for bad_cue in bad_cues:
         sum_file.write('%s \n' % bad_cue)
 
-    sum_file.write('clean_probe_epochs_are_' + str(len(bad_probes)) + ':\n')
+    sum_file.write('bad_probe_epochs_are_' + str(len(bad_probes)) + ':\n')
     for bad_probe in bad_probes:
         sum_file.write('%s \n' % bad_probe)
     # Close summary file

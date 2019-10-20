@@ -21,7 +21,7 @@ import pandas as pd
 from mne import create_info, find_events, Annotations, \
     events_from_annotations, concatenate_raws
 from mne.io import read_raw_bdf
-from mne.channels import read_montage
+from mne.channels import make_standard_montage
 
 # ========================================================================
 # --- global settings
@@ -55,8 +55,7 @@ files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 # -- define further variables that apply to all files in the data set
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = read_montage(kind='standard_1020')
-
+montage = make_standard_montage(kind='biosemi64')
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
@@ -140,6 +139,7 @@ for file in files:
     print('\n Identified breaks at positions', breaks)
 
     # --- 7) save start and end points of task blocks  ---------
+    # subject '041' has more practice trials
     if subj == '041':
         # start first block
         b1s = latencies[breaks[2] + 1] - 2
@@ -150,6 +150,8 @@ for file in files:
         b2s = latencies[breaks[3] + 1] - 2
         # end of second block
         b2e = latencies[breaks[4]] + 6
+
+    # all other subjects have the same structure
     else:
         # start first block
         b1s = latencies[breaks[0] + 1] - 2
