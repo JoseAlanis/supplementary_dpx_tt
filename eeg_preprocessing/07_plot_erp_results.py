@@ -153,17 +153,17 @@ fig = Grand_Average_A.plot_joint(times=ttp,
                                  topomap_args=topomap_args,
                                  title='Average Evoked Activity - Cue A')
 fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-fig.axes[0].set_yticks(list(np.arange(-9, 9.5, 4.5)), minor=False)
+fig.axes[0].set_yticks(list(np.arange(-8, 8.5, 4)), minor=False)
 fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
                     color='black', linestyle='dashed', linewidth=.8)
 fig.axes[0].axvline(x=0, ymin=-5, ymax=5,
                     color='black', linestyle='dashed', linewidth=.8)
 fig.axes[0].spines['top'].set_visible(False)
 fig.axes[0].spines['right'].set_visible(False)
-fig.axes[0].spines['left'].set_bounds(-9, 9)
+fig.axes[0].spines['left'].set_bounds(-8, 8)
 fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
-fig.axes[0].xaxis.set_label_coords(.5, -.135)
-fig.set_size_inches(9, 4.5)
+fig.axes[0].xaxis.set_label_coords(.5, -.175)
+fig.set_size_inches(7.5, 4)
 fig.savefig(op.join(output_path, 'Evoked_A_Cue.pdf'), dpi=300)
 
 # B cues
@@ -172,17 +172,17 @@ fig = Grand_Average_B.plot_joint(times=ttp,
                                  topomap_args=topomap_args,
                                  title='Average Evoked Activity - Cue B')
 fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-fig.axes[0].set_yticks(list(np.arange(-9, 9.5, 4.5)), minor=False)
+fig.axes[0].set_yticks(list(np.arange(-8, 8.5, 4)), minor=False)
 fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
                     color='black', linestyle='dashed', linewidth=.8)
 fig.axes[0].axvline(x=0, ymin=-5, ymax=5,
                     color='black', linestyle='dashed', linewidth=.8)
 fig.axes[0].spines['top'].set_visible(False)
 fig.axes[0].spines['right'].set_visible(False)
-fig.axes[0].spines['left'].set_bounds(-9, 9)
+fig.axes[0].spines['left'].set_bounds(-8, 8)
 fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
-fig.axes[0].xaxis.set_label_coords(.5, -.135)
-fig.set_size_inches(9, 4.5)
+fig.axes[0].xaxis.set_label_coords(.5, -.175)
+fig.set_size_inches(7.5, 4)
 fig.savefig(op.join(output_path, 'Evoked_B_Cue.pdf'), dpi=300)
 
 # --- 3.2) plot global field power ---------
@@ -207,41 +207,43 @@ evokeds = {'A Cue': Grand_Average_A.copy().crop(tmin=-.25),
 cmap = 'magma'
 colors = {'A Cue': 0, 'B Cue': 0.5}
 # create plot
-fig = plot_compare_evokeds(evokeds,
-                           linestyles={'A Cue': '-', 'B Cue': '--'},
-                           styles={'A Cue': {"linewidth": 2.},
-                                   'B Cue': {"linewidth": 2.}},
-                           show_legend='upper center',
-                           ylim=dict(eeg=[0, 4]),
-                           cmap=cmap,
-                           colors=colors)
-fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-fig.axes[0].set_yticks(list(np.arange(0, 5, 1)), minor=False)
-fig.axes[0].add_collection(collection)
-fig.axes[0].annotate('t1', xy=(.074, 4.), weight="bold")
-fig.axes[0].annotate('t2', xy=(.16, 4.), weight="bold")
-fig.axes[0].annotate('t3', xy=(.27, 4.), weight="bold")
-fig.axes[0].annotate('t4', xy=(.44, 4.), weight="bold")
-fig.axes[0].annotate('t5', xy=(2.175, 4.), weight="bold")
-fig.axes[0].spines['top'].set_visible(False)
-fig.axes[0].spines['right'].set_visible(False)
-fig.axes[0].spines['left'].set_bounds(0, 4)
-fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
-fig.axes[0].xaxis.set_label_coords(.5, -.13)
-fig.set_size_inches(9, 4)
+fig, ax = plt.subplots(figsize=(7.5, 4))
+plot_compare_evokeds(evokeds,
+                     axes=ax,
+                     linestyles={'A Cue': '-', 'B Cue': '--'},
+                     styles={'A Cue': {"linewidth": 2.},
+                             'B Cue': {"linewidth": 2.}},
+                     legend='upper center',
+                     ylim=dict(eeg=[0, 4]),
+                     cmap=cmap,
+                     colors=colors,
+                     )
+ax.set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+ax.set_yticks(list(np.arange(0, 5, 1)), minor=False)
+ax.add_collection(collection)
+ax.annotate('t1', xy=(.074, 4.), weight="bold")
+ax.annotate('t2', xy=(.16, 4.), weight="bold")
+ax.annotate('t3', xy=(.27, 4.), weight="bold")
+ax.annotate('t4', xy=(.44, 4.), weight="bold")
+ax.annotate('t5', xy=(2.175, 4.), weight="bold")
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_bounds(0, 4)
+ax.spines['bottom'].set_bounds(-.25, 2.5)
+ax.xaxis.set_label_coords(.5, -.13)
 fig.subplots_adjust(bottom=0.15)
 fig.savefig(op.join(output_path, 'GFP_evokeds.pdf'), dpi=300)
 
 # --- 3.3) plot cue ERPs ---------
 # electrodes to plot
-electrodes =  ['FCz', 'Pz', 'PO8']
+electrodes = ['FCz', 'Pz', 'PO8']
 
 for electrode in electrodes:
     # electrode in question
     pick = Grand_Average_A.ch_names.index(electrode)
     cmap = 'magma'
     colors = {'A Cue': 0, 'B Cue': 0.6}
-    fig, ax = plt.subplots(figsize=(9, 3.5))
+    fig, ax = plt.subplots(figsize=(7.5, 4))
     plot_compare_evokeds({'A Cue': Grand_Average_A.copy().crop(tmin=-.5),
                           'B Cue': Grand_Average_B.copy().crop(tmin=-.5)},
                          ylim=dict(eeg=[-8, 6]),
@@ -249,7 +251,7 @@ for electrode in electrodes:
                          invert_y=False,
                          cmap=cmap,
                          colors=colors,
-                         show_legend=3,
+                         legend='lower left',
                          show_sensors=2,
                          truncate_xaxis=False,
                          axes=ax)
@@ -283,3 +285,4 @@ for electrode in electrodes:
     ax.set_xlim(-.5, 2.5)
     ax.xaxis.set_ticks(np.arange(-.5, 2.5+0.1, .25))
     plt.plot()
+    fig.savefig(op.join(output_path, 'Cue_ERP_%s.pdf') % electrode, dpi=300)

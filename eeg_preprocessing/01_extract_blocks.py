@@ -55,7 +55,7 @@ files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 # -- define further variables that apply to all files in the data set
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = make_standard_montage(kind='biosemi64')
+montage = make_standard_montage(kind='standard_1020')
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
@@ -72,25 +72,23 @@ for file in files:
     raw = read_raw_bdf(file,
                        preload=True,
                        exclude=exclude)
-    # apply montage to data
-    raw.set_montage(montage)
-    # reset orig_time
+
+    # check data and remove channel with low (i.e., near zero variance)
+    # indices
+    flats = np.where(np.std(raw.get_data(), axis=1) * 1e6 < 10.)[0]
+    # names
+    flats = [raw.ch_names[ch] for ch in flats]
+    # print summary
+    print('Following channels were dropped as variance ~ 0:', flats)
+    # remove them from data set
+    raw.drop_channels(flats)
+
+    # --- 3) modify data set information  ----------------------
+    # keep the sampling rate
+    sfreq = raw.info['sfreq']
+    # and date of measurement
     date_of_record = raw.annotations.orig_time
 
-    # --- 2) check channels variance  ------------------------
-    # look for channels with zero (or near zero variance; i.e., flat-lines)
-    chans_to_drop = []
-    for chan in raw.info['ch_names']:
-        if (np.std(raw.get_data(raw.info['ch_names'].index(chan))) * 1e6) < 10.:
-            chans_to_drop.append(chan)
-    # print summary
-    print('Following channels were dropped as variance ~ 0:', chans_to_drop)
-    # remove them from data set
-    raw.drop_channels(chans_to_drop)
-
-    # --- 3) save data set information  ------------------------
-    # Note the sampling rate of recording
-    sfreq = raw.info['sfreq']
     # all channels in raw
     chans = raw.info['ch_names']
     # channels in montage
@@ -113,10 +111,10 @@ for file in files:
     info_custom['description'] = task_description
     # overwrite file info
     raw.info = info_custom
-    # date of measurement
+    # replace date info
     raw.info['meas_date'] = (date_of_record, 0)
 
-    # --- 4) set reference to remove residual line noise  ------
+    # --- 3) set reference to remove residual line noise  ------
     raw.set_eeg_reference(['Cz'], projection=False)
 
     # --- 5) find cue events in data ---------------------------
@@ -175,7 +173,6 @@ for file in files:
     # --- 8) extract block data --------------------------------
     # Block 1
     raw_bl1 = raw.copy().crop(tmin=b1s, tmax=b1e)
-
     # Block 2
     raw_bl2 = raw.copy().crop(tmin=b2s, tmax=b2e)
 
@@ -246,7 +243,7 @@ for file in files:
     sfile.write('number_of_trials_found:\n%s\n' % nr_trials)
     # channels dropped
     sfile.write('channels_with_zero_variance:\n')
-    for ch in chans_to_drop:
+    for ch in flats:
         sfile.write('%s\n' % ch)
     sfile.close()
 

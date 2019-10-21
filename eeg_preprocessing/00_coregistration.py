@@ -51,74 +51,70 @@ output_path = op.join(derivatives_path, 'coreg')
 files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 
 # ========================================================================
-# eeg channel names and locations
-montage = make_standard_montage(kind='biosemi64')
+# --- 1) set eeg channel names and locations ---------------
+# get standard 10-20 channel information
+montage = make_standard_montage(kind='standard_1020', )
 
-# plot biosemi montage
-plot_montage(montage)
+# visualize channel arrangement
+# plot_montage(montage)
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8',
            'EOGV_oben', 'EOGV_unten', 'EOGH_rechts', 'EOGH_links']
 
 
-# --- 1) set up paths and file names -----------------------
+# --- 2) get sample file for co-registration  --------------
+# file path and name
 file = files[0]
 filepath, filename = op.split(file)
 
 # subject in question
 subj = re.findall(r'\d+', filename)[0].rjust(3, '0')
+subject = 'sub-%s' % subj
 
-# --- 2) import the data -----------------------------------
+
+# --- 3) import the data -----------------------------------
 raw = read_raw_bdf(file,
                    preload=True,
                    exclude=exclude)
-
+# apply montage to data
 raw.set_montage(montage)
+# set eeg reference
+raw.set_eeg_reference(projection=True)  # needed for inverse modeling
 
-# create directory for save
-if not op.exists(op.join(output_path, 'sub-%s' % subj)):
-    mkdir(op.join(output_path, 'sub-%s' % subj))
 
-raw.save(op.join(output_path, 'sub-' + str(subj),
-                 'sub-%s_for_coreg-raw.fif' % subj),
+# --- 4) create directory for saving -----------------------
+if not op.exists(op.join(output_path, subject)):
+    mkdir(op.join(output_path, subject))
+# save file
+raw.save(op.join(output_path, subject, subject + '_for_coreg-raw.fif'),
          overwrite=True)
 
 
-
-
-
-
-
-# Download fsaverage files
+# --- 5) load fsaverage files ------------------------------
 fs_dir = fetch_fsaverage(verbose=True)
 subjects_dir = op.dirname(fs_dir)
 
-# The files live in:
-subject = 'fsaverage'
-# trans = op.join(fs_dir, 'bem', 'fsaverage-trans.fif')
+# get the transformation file for montage
+trans = op.join(output_path, subject, subject + '-trans.fif')
+
+# sources and boundary element model computed from fsaverage
 src = op.join(fs_dir, 'bem', 'fsaverage-ico-5-src.fif')
 bem = op.join(fs_dir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
 
-# trans = op.join(output_path, 'sub-001/sub-001-trans.fif')
 
-
-
-
-
-
-plot_alignment(raw.info, src=src, eeg=['original', 'projected'],
-               trans=None, dig=True, mri_fiducials=True)
-
+# --- 6) compute forward solution --------------------------
 fwd = make_forward_solution(raw.info, trans=trans, src=src,
-                            bem=bem, eeg=True, mindist=5.0, n_jobs=1)
+                            bem=bem, eeg=True, mindist=5.0, n_jobs=2)
 print(fwd)
+
+
+# --- 7) check co-registration -----------------------------
+plot_alignment(raw.info, src=src, eeg=['original', 'projected'],
+               trans=trans, dig=True, mri_fiducials=True)
 
 # for illustration purposes use fwd to compute the sensitivity map
 eeg_map = sensitivity_map(fwd, ch_type='eeg', mode='fixed')
 eeg_map.plot(time_label='EEG sensitivity', subjects_dir=subjects_dir,
              hemi='both',
              clim=dict(lims=[5, 50, 100]), surface='inflated')
-
-
-
