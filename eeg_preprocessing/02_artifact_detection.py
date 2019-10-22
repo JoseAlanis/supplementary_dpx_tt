@@ -103,7 +103,7 @@ for file in files:
     data = raw_copy.get_data(picks_eeg)
 
     # channels to be checked by artifact detection procedure
-    ch_ix = [channels.index(chan) for chan in channels if chan not in ignore_ch]
+    ch_ix = [channels.index(ch) for ch in channels if ch not in ignore_ch]
 
     # detect artifacts (i.e., absolute amplitude > 500 microV)
     times = []
@@ -124,7 +124,7 @@ for file in files:
         if max(peak) >= 300e-6:
             times.append(float(sample))
             annotated_channels.append(channels[ch_ix[int(np.argmax(peak))]])
-    # If artifact found create annotations for raw data
+    # if artifact found create annotations for raw data
     if len(times) > 0:
         # get first time
         first_time = raw_copy._first_time
@@ -229,7 +229,7 @@ for file in files:
             if max(peak) >= 300e-6:
                 times.append(float(sample))
                 annotated_channels.append(channels[ch_ix[int(np.argmax(peak))]])
-        # If artifact found create annotations for raw data
+        # if artifact found create annotations for raw data
         if len(times) > 0:
             # get first time
             first_time = raw_copy._first_time

@@ -64,14 +64,15 @@ for file in files:
 
     # --- 3) set up ica parameters -----------------------------
     # ICA parameters
-    n_components = 20
+    n_components = 15
     method = 'picard'
-    reject = dict(eeg=3e-4)
+    reject = dict(eeg=300e-6)
 
     # Pick electrodes to use
     picks = pick_types(raw.info,
                        eeg=True,
-                       eog=False)
+                       eog=False,
+                       stim=False)
 
     # --- 4) fit ica --------------------------------------------
     # ICA parameters
@@ -81,9 +82,10 @@ for file in files:
                               extended=True))
 
     # fit ICA
-    ica.fit(raw.copy().filter(1, 50),
+    ica.fit(raw.copy().filter(l_freq=1., h_freq=None),
             picks=picks,
-            reject=reject)
+            reject=reject,
+            reject_by_annotation=True)
 
     # --- 5) save ica weights ----------------------------------
     # create directory for save
@@ -96,6 +98,6 @@ for file in files:
 
     # --- 6) plot resulting components ------------------------
     # plot components
-    ica_fig = ica.plot_components(picks=range(0, 20), show=False)
+    ica_fig = ica.plot_components(picks=range(0, 15), show=False)
     ica_fig.savefig(op.join(output_path, 'sub-%s' % subj,
                             'sub-%s_ica.pdf' % subj))
