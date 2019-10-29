@@ -65,19 +65,58 @@ for file in files:
     # --- 2) import the data -----------------------------------
     raw = read_raw_fif(file, preload=True)
 
-    # get eogs
+    # get eogs indices and names
     eogs = pick_types(raw.info, eog=True)
+    eog_names = [raw.ch_names[ch] for ch in eogs]
 
-    if len(eogs) > 2:
-        raw.drop_channels(raw.info['ch_names'][-3])
-        raw.drop_channels(raw.info['ch_names'][-1])
+    # if len(eogs) > 2:
+    #     raw.drop_channels(raw.info['ch_names'][-3])
+    #     raw.drop_channels(raw.info['ch_names'][-1])
 
     # --- 4) import ICA weights --------------------------------
     ica = read_ica(op.join(ica_path,
                            'sub-%s' % subj,
                            'sub-%s_ica_weights-ica.fif' % subj))
 
+    # --- 5) create average blinks and save figure -------------
+    # plotting parameters
+    ts_args = dict(ylim=dict(eeg=[-25, 125]))
+    topomap_args = dict(vmax=100, vmin=-25)
+
+    # create average blinks and save figure
+    for eog in eog_names:
+        # blink epochs
+        eog_evoked = create_eog_epochs(raw,
+                                       reject_by_annotation=True,
+                                       picks='eeg',
+                                       ch_name=eog).average()
+        # create blink evoked
+        eog_evoked.apply_baseline(baseline=(None, -0.2))
+        fig = eog_evoked.plot_joint(times=[0., 0.2],
+                                    ts_args=ts_args,
+                                    topomap_args=topomap_args)
+        # save fig to pdf
+        fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                            'sub-%s_eog-%s.pdf' % (subj, eog)))
+
+    # --- 6) find "eog" components via correlation -------------
+    ica.exclude = []
+    for n, eog in enumerate(eog_names):
+        eog_indices, eog_scores = ica.find_bads_eog(raw, ch_name=eog)
+        if eog_indices:
+            ica.exclude.append(eog_indices)
+
+        fig = ica.plot_scores(eog_scores, title='scores %s' % eog)
+        fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                            'sub-%s_r-%s_scores.pdf' % (subj, eog)))
+
+
     # --- 5) find "eog" components via correlation -------------
+    # find which ICs match the EOG pattern
+    eog_indices, eog_scores = ica.find_bads_eog(raw)
+    ica.exclude = eog_indices
+
+
     # reject = dict(eeg=3e-4)
     # create "blink ERP"
     eog_average = create_eog_epochs(raw,
