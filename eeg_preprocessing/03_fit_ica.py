@@ -59,8 +59,8 @@ for file in files:
     # --- 2) import preprocessed data --------------------------
     raw = read_raw_fif(file, preload=True)
 
-    # sampling rate
-    sfreq = raw.info['sfreq']
+    # apply average reference
+    raw.apply_proj()
 
     # --- 3) set up ica parameters -----------------------------
     # ICA parameters

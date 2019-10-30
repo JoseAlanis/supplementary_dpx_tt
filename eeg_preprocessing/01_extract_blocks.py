@@ -115,7 +115,7 @@ for file in files:
     raw.info['meas_date'] = (date_of_record, 0)
 
     # --- 3) set reference to remove residual line noise  ------
-    raw.set_eeg_reference(['Cz'], projection=False)
+    raw.set_eeg_reference(['POz'], projection=False)
 
     # --- 5) find cue events in data ---------------------------
     # get events

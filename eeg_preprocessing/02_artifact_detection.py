@@ -121,7 +121,7 @@ for file in files:
         peak = []
         for channel in ch_ix:
             peak.append(abs(data[channel][sample]))
-        if max(peak) >= 300e-6:
+        if max(peak) >= 400e-6:
             times.append(float(sample))
             annotated_channels.append(channels[ch_ix[int(np.argmax(peak))]])
     # if artifact found create annotations for raw data
@@ -226,7 +226,7 @@ for file in files:
             peak = []
             for channel in ch_ix:
                 peak.append(abs(data[channel][sample]))
-            if max(peak) >= 300e-6:
+            if max(peak) >= 400e-6:
                 times.append(float(sample))
                 annotated_channels.append(channels[ch_ix[int(np.argmax(peak))]])
         # if artifact found create annotations for raw data

@@ -83,91 +83,57 @@ for file in files:
     ts_args = dict(ylim=dict(eeg=[-25, 125]))
     topomap_args = dict(vmax=100, vmin=-25)
 
-    # create average blinks and save figure
-    for eog in eog_names:
-        # blink epochs
-        eog_evoked = create_eog_epochs(raw,
-                                       reject_by_annotation=True,
-                                       picks='eeg',
-                                       ch_name=eog).average()
-        # create blink evoked
-        eog_evoked.apply_baseline(baseline=(None, -0.2))
-        fig = eog_evoked.plot_joint(times=[0., 0.2],
-                                    ts_args=ts_args,
-                                    topomap_args=topomap_args)
-        # save fig to pdf
-        fig.savefig(op.join(output_path, 'sub-%s' % subj,
-                            'sub-%s_eog-%s.pdf' % (subj, eog)))
+    # place holder for bad components
+    bad_comps = []
 
     # --- 6) find "eog" components via correlation -------------
-    ica.exclude = []
     for n, eog in enumerate(eog_names):
-        eog_indices, eog_scores = ica.find_bads_eog(raw, ch_name=eog)
-        if eog_indices:
-            ica.exclude.append(eog_indices)
+        eog_epochs = create_eog_epochs(raw,
+                                       reject_by_annotation=True,
+                                       # picks='eeg',
+                                       ch_name=eog)
+        # create average blink
+        eog_evoked = eog_epochs.average()
+        eog_evoked.apply_baseline(baseline=(None, -0.2))
 
-        fig = ica.plot_scores(eog_scores, title='scores %s' % eog)
-        fig.savefig(op.join(output_path, 'sub-%s' % subj,
-                            'sub-%s_r-%s_scores.pdf' % (subj, eog)))
+        # find components that correlate with activity recorded at eog
+        # channel in question
+        eog_indices, eog_scores = ica.find_bads_eog(eog_epochs,
+                                                    threshold=3.0,
+                                                    ch_name=eog,
+                                                    reject_by_annotation=True)
 
-
-    # --- 5) find "eog" components via correlation -------------
-    # find which ICs match the EOG pattern
-    eog_indices, eog_scores = ica.find_bads_eog(raw)
-    ica.exclude = eog_indices
-
-
-    # reject = dict(eeg=3e-4)
-    # create "blink ERP"
-    eog_average = create_eog_epochs(raw,
-                                    # reject=reject,
-                                    reject_by_annotation=True,
-                                    picks='eeg').average()
-    # get single blink trials
-    eog_epochs = create_eog_epochs(raw,
-                                   # reject=reject,
-                                   reject_by_annotation=True)
-    # find matching components via correlation
-    eog_inds, scores = ica.find_bads_eog(eog_epochs,
-                                         reject_by_annotation=True)
-
-    # --- 6) inspect component time series  --------------------
-    if eog_inds:
-        ica.exclude.extend(eog_inds)
-        ica.plot_sources(raw, block=True)
-    else:
-        ica.plot_sources(raw, block=True)
-
-    # --- 7) look at correlation scores of components ----------
-    fig = ica.plot_scores(scores)
-    fig.savefig(op.join(output_path, 'sub-%s' % subj,
-                        'sub-%s_r_scores.pdf' % subj))
-    del fig
-
-    # look at source time course
-    fig = ica.plot_sources(eog_average)
-    fig.savefig(op.join(output_path, 'sub-%s' % subj,
-                        'sub-%s_sources.pdf' % subj))
-    del fig
-
-    # save component properties
-    if len(eog_epochs) > 1:
-        for ind in ica.exclude:
+        for eog_i in eog_indices:
+            bad_comps.append(eog_i)
+            # plot component properties
             fig = ica.plot_properties(eog_epochs,
-                                      picks=ind,
+                                      picks=eog_i,
                                       psd_args={'fmax': 35.},
                                       image_args={'sigma': 1.})[0]
             fig.savefig(op.join(output_path, 'sub-%s' % subj,
-                                'sub-%s_comp_%d.pdf' % (subj, ind)))
-            del fig
+                                'sub-%s_comp_%d.pdf' % (subj, eog_i)))
 
-    # --- 6) remove bad components -----------------------------
+        fig = ica.plot_scores(eog_scores,
+                              exclude=eog_indices,
+                              title='scores %s' % eog)
+        fig.savefig(op.join(output_path, 'sub-%s' % subj,
+                            'sub-%s_r-%s_scores.pdf' % (subj, eog)))
+
+    # --- 7) Exclude bad components ----------------------------
+    ica.exclude = list(set(bad_comps))
+
+    # check if any others should be removed
+    ica.plot_sources(raw, block=True)
+    print(ica.exclude)
+
+    # --- 8) remove bad components -----------------------------
     # apply ica weights to raw data
     ica.apply(raw)
 
     # --- 7) check results -------------------------------------
     # plot pruned data
-    raw.plot(n_channels=67, title=str(filename),
+    raw.plot(n_channels=len(raw.ch_names),
+             title=str(filename),
              scalings=dict(eeg=50e-6),
              bad_color='red',
              block=True)
