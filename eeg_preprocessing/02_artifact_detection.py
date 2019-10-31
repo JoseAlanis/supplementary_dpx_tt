@@ -50,7 +50,7 @@ files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
 # ----------- loop through files and detect artifacts --------------------
-for file in files:
+for file in files[26:]:
 
     # --- 1) set up paths and file names -----------------------
     filepath, filename = op.split(file)
@@ -264,15 +264,15 @@ for file in files:
             # apply to raw data
             raw_copy.set_annotations(annotations)
 
-    # --- 4) plot data and check for inconsistencies  ----------
+    # --- 4) re-reference data to average of 64 electrodes  ----
+    raw_copy.set_eeg_reference(ref_channels='average',
+                               projection=True)
+
+    # --- 5) plot data and check for inconsistencies  ----------
     raw_copy.plot(scalings=dict(eeg=50e-6),
                   n_channels=len(raw.info['ch_names']),
                   bad_color='red',
                   block=True)
-
-    # --- 5) re-reference data to average of 64 electrodes  ----
-    raw_copy.set_eeg_reference(ref_channels='average',
-                               projection=True)
 
     # --- 6) save segmented data  -----------------------------
     # create directory for save
