@@ -51,7 +51,7 @@ files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
 # ------------ loop through files and remove bad components --------------
-for file in files:
+for file in files[30:]:
 
     # --- 1) Set up paths and file names -----------------------
     filepath, filename = op.split(file)
@@ -64,6 +64,9 @@ for file in files:
 
     # --- 2) import the data -----------------------------------
     raw = read_raw_fif(file, preload=True)
+
+    # apply average reference
+    raw.apply_proj()
 
     # get eogs indices and names
     eogs = pick_types(raw.info, eog=True)

@@ -414,7 +414,6 @@ for file in files:
                         reject_by_annotation=True,
                         picks=picks,
                         reject=reject,
-                        proj=True
                         )
 
     # create probe epochs
@@ -428,7 +427,6 @@ for file in files:
                           reject_by_annotation=True,
                           picks=picks,
                           reject=reject,
-                          proj=True
                           )
 
     # --- 7) save epochs info ------------------------------------
