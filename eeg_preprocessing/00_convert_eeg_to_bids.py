@@ -17,7 +17,7 @@ from datetime import datetime
 
 from pandas import read_csv
 
-from mne.channels import read_montage
+from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
 from mne import find_events
 
@@ -25,7 +25,7 @@ from mne_bids import write_raw_bids, make_bids_basename
 
 # ========================================================================
 # global settings
-root_path = input("Type path to project directory: ")  # prompt user to set path
+root_path = input("Type path to project directory: ")  # prompt to set path
 
 # look for directory
 if os.path.isdir(root_path):

@@ -20,7 +20,7 @@ from mne.datasets import fetch_fsaverage
 from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
 from mne.viz import plot_alignment, plot_montage
-from mne import make_forward_solution, sensitivity_map
+from mne import make_forward_solution, sensitivity_map, write_forward_solution
 
 # ========================================================================
 # --- global settings
@@ -118,3 +118,7 @@ eeg_map = sensitivity_map(fwd, ch_type='eeg', mode='fixed')
 eeg_map.plot(time_label='EEG sensitivity', subjects_dir=subjects_dir,
              hemi='both',
              clim=dict(lims=[5, 50, 100]), surface='inflated')
+
+write_forward_solution(op.join(output_path, subject, subject + '_fsol-fwd.fif'),
+                       fwd=fwd,
+                       overwrite=True)
