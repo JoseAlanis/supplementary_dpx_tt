@@ -19,11 +19,8 @@ import re
 from mne.datasets import fetch_fsaverage
 from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
-from mne.viz import plot_alignment
+from mne.viz import plot_alignment, plot_montage
 from mne import make_forward_solution, sensitivity_map, write_forward_solution
-
-# invoke PyQt
-%gui qt
 
 # ========================================================================
 # --- global settings
@@ -59,12 +56,11 @@ files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 montage = make_standard_montage(kind='standard_1020')
 
 # visualize channel arrangement
-# plot_montage(montage)
+plot_montage(montage)
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8',
            'EOGV_oben', 'EOGV_unten', 'EOGH_rechts', 'EOGH_links']
-
 
 # --- 2) get sample file for co-registration  --------------
 # file path and name
@@ -75,7 +71,6 @@ filepath, filename = op.split(file)
 subj = re.findall(r'\d+', filename)[0].rjust(3, '0')
 subject = 'sub-%s' % subj
 
-
 # --- 3) import the data -----------------------------------
 raw = read_raw_bdf(file,
                    preload=True,
@@ -85,14 +80,12 @@ raw.set_montage(montage)
 # set eeg reference
 raw.set_eeg_reference(projection=True)
 
-
 # --- 4) create directory for saving -----------------------
 if not op.exists(op.join(output_path, subject)):
     mkdir(op.join(output_path, subject))
 # save file
 raw.save(op.join(output_path, subject, subject + '_for_coreg-raw.fif'),
          overwrite=True)
-
 
 # --- 5) load fsaverage files ------------------------------
 fs_dir = fetch_fsaverage(verbose=True)
@@ -105,30 +98,23 @@ trans = op.join(output_path, subject, subject + '-std1020-trans.fif')
 src = op.join(fs_dir, 'bem', 'fsaverage-ico-5-src.fif')
 bem = op.join(fs_dir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
 
-plot_alignment(
-    dig='fiducials', surfaces='brain', mri_fiducials=True,
-    subject='fsaverage', subjects_dir=subjects_dir, info=raw.info,
-    # coord_frame='mri',
-    trans=trans,  # transform from head coords to fsaverage's MRI
-    )
+# --- 6) check co-registration -----------------------------
+# plot alignment with head surface
+plot_alignment(raw.info, src=src, eeg=['original', 'projected'],
+               trans=trans, dig=True, mri_fiducials=True,
+               coord_frame='mri')
 
-
-# --- 6) compute forward solution --------------------------
+# --- 7) compute forward solution --------------------------
 fwd = make_forward_solution(raw.info, trans=trans, src=src,
                             bem=bem, eeg=True, mindist=5.0, n_jobs=2)
 print(fwd)
 
-
-# --- 7) check co-registration -----------------------------
-plot_alignment(raw.info, src=src, eeg=['original', 'projected'],
-                     trans=trans, dig=True, mri_fiducials=True)
-
-# for illustration purposes use fwd to compute the sensitivity map
+# --- 8) check the eeg sensitivity ma ----------------------
 eeg_map = sensitivity_map(fwd, ch_type='eeg', mode='fixed')
 eeg_map.plot(time_label='EEG sensitivity', subjects_dir=subjects_dir,
              hemi='both',
              clim=dict(lims=[5, 50, 100]), surface='inflated')
 
-write_forward_solution(op.join(output_path, subject, subject + '_fsol-1020-fwd.fif'),
-                       fwd=fwd,
-                       overwrite=True)
+# --- 9) save forward solution
+file_name = op.join(output_path, subject, subject + '_fsol-1020-fwd.fif')
+write_forward_solution(file_name, fwd=fwd, overwrite=True)

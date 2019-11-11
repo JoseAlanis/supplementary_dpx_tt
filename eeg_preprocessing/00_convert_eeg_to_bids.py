@@ -19,7 +19,7 @@ from pandas import read_csv
 
 from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
-from mne import find_events
+from mne import create_info, find_events
 
 from mne_bids import write_raw_bids, make_bids_basename
 
@@ -49,7 +49,7 @@ subj_demo = read_csv(subj_demo, sep='\t', header=0)
 task = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = read_montage(kind='standard_1020')
+montage = make_standard_montage(kind='standard_1020')
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
@@ -67,10 +67,29 @@ for ind, file in enumerate(files):
     raw = read_raw_bdf(file,
                        preload=False,
                        exclude=exclude)
-    # apply montage to data
-    raw.set_montage(montage)
 
-    # --- 3) subject info --------------------------------------
+    # --- 3) dataset info --------------------------------------
+    # keep the sampling rate
+    sfreq = raw.info['sfreq']
+    # all channels in raw
+    chans = raw.info['ch_names']
+    # channels in montage
+    montage_chans = montage.ch_names
+    # nr of eeg channels
+    n_eeg = len([chan for chan in chans if chan in montage_chans])
+    # channel types
+    types = []
+    for chan in chans:
+        if chan in montage_chans:
+            types.append('eeg')
+        elif re.match('EOG|EXG', chan):
+            types.append('eog')
+        else:
+            types.append('stim')
+    # create custom info for subj file
+    info_custom = create_info(chans, sfreq, types, montage)
+
+    # --- 4) add subject specific information -------------------
     # create tuple containing approx. birthday
     date_of_record = raw.annotations.orig_time
     # unix timestap to date
@@ -80,8 +99,7 @@ for ind, file in enumerate(files):
     approx_birthday = (year_of_birth,
                        int(date[5:].split('-')[0]),
                        int(date[5:].split('-')[1]))
-
-    # add subject info
+    # add subject info to dataset info
     raw.info['subject_info'] = dict(id=int(subj),
                                     sex=subj_demo.iloc[ind].sex,
                                     birthday=approx_birthday)
