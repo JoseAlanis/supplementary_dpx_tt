@@ -19,8 +19,11 @@ import re
 from mne.datasets import fetch_fsaverage
 from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
-from mne.viz import plot_alignment, plot_montage
+from mne.viz import plot_alignment
 from mne import make_forward_solution, sensitivity_map, write_forward_solution
+
+# invoke PyQt
+%gui qt
 
 # ========================================================================
 # --- global settings
@@ -53,7 +56,7 @@ files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 # ========================================================================
 # --- 1) set eeg channel names and locations ---------------
 # get standard 10-20 channel information
-montage = make_standard_montage(kind='standard_1020', )
+montage = make_standard_montage(kind='standard_1020')
 
 # visualize channel arrangement
 # plot_montage(montage)
@@ -80,7 +83,7 @@ raw = read_raw_bdf(file,
 # apply montage to data
 raw.set_montage(montage)
 # set eeg reference
-raw.set_eeg_reference(projection=True)  # needed for inverse modeling
+raw.set_eeg_reference(projection=True)
 
 
 # --- 4) create directory for saving -----------------------
@@ -96,11 +99,18 @@ fs_dir = fetch_fsaverage(verbose=True)
 subjects_dir = op.dirname(fs_dir)
 
 # get the transformation file for montage
-trans = op.join(output_path, subject, subject + '-trans.fif')
+trans = op.join(output_path, subject, subject + '-std1020-trans.fif')
 
 # sources and boundary element model computed from fsaverage
 src = op.join(fs_dir, 'bem', 'fsaverage-ico-5-src.fif')
 bem = op.join(fs_dir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
+
+plot_alignment(
+    dig='fiducials', surfaces='brain', mri_fiducials=True,
+    subject='fsaverage', subjects_dir=subjects_dir, info=raw.info,
+    # coord_frame='mri',
+    trans=trans,  # transform from head coords to fsaverage's MRI
+    )
 
 
 # --- 6) compute forward solution --------------------------
@@ -111,7 +121,7 @@ print(fwd)
 
 # --- 7) check co-registration -----------------------------
 plot_alignment(raw.info, src=src, eeg=['original', 'projected'],
-               trans=trans, dig=True, mri_fiducials=True)
+                     trans=trans, dig=True, mri_fiducials=True)
 
 # for illustration purposes use fwd to compute the sensitivity map
 eeg_map = sensitivity_map(fwd, ch_type='eeg', mode='fixed')
@@ -119,6 +129,6 @@ eeg_map.plot(time_label='EEG sensitivity', subjects_dir=subjects_dir,
              hemi='both',
              clim=dict(lims=[5, 50, 100]), surface='inflated')
 
-write_forward_solution(op.join(output_path, subject, subject + '_fsol-fwd.fif'),
+write_forward_solution(op.join(output_path, subject, subject + '_fsol-1020-fwd.fif'),
                        fwd=fwd,
                        overwrite=True)
