@@ -1,6 +1,6 @@
 # --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.7.3 / mne 0.18.1
+# --- Python 3.7 / mne 0.20
 #
 # --- eeg pre-processing for DPX TT
 # --- version: june 2019
@@ -18,8 +18,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from mne import create_info, find_events, Annotations, \
-    events_from_annotations, concatenate_raws
+from mne import pick_types, create_info, find_events, \
+    Annotations, events_from_annotations, concatenate_raws
 from mne.io import read_raw_bdf
 from mne.channels import make_standard_montage
 
@@ -61,7 +61,7 @@ exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # ========================================================================
 # ------------ loop through files and extract blocks  --------------------
-for file in files:
+for file in files[37:]:
 
     # --- 1) set up paths and file names -----------------------
     filepath, filename = op.split(file)
@@ -115,11 +115,7 @@ for file in files:
     raw.info['meas_date'] = (date_of_record, 0)
 
     # --- 3) set reference to remove residual line noise  ------
-    # subject 27 has noisy POz channel
-    if subj == '027':
-        raw.set_eeg_reference(['Pz'], projection=False)
-    else:
-        raw.set_eeg_reference(['POz'], projection=False)
+    raw.set_eeg_reference(['Cz'], projection=False)
 
     # --- 5) find cue events in data ---------------------------
     # get events
@@ -216,6 +212,10 @@ for file in files:
     # drop stimulus channel
     raw_blocks.drop_channels('Status')
 
+    raw_blocks.plot(n_channels=len(raw_blocks.ch_names),
+                    scalings=dict(eeg=100e-6),
+                    block=True)
+
     # --- 12) save segmented data  -----------------------------
     # create directory for save
     if not op.exists(op.join(output_path, 'sub-%s' % subj)):
@@ -237,10 +237,10 @@ for file in files:
     name = 'sub-%s_task_blocks_summary.txt' % subj
     sfile = open(op.join(output_path, 'sub-%s', name) % subj, 'w')
     #     # block info
-    sfile.write('Block_1_from_' + str(round(b1s, 2)) + '_to_' +
-                str(round(b1e, 2)) + '\n')
-    sfile.write('Block 2 from ' + str(round(b2s, 2)) + '_to_' +
-                str(round(b2e, 2)) + '\n')
+    sfile.write('Block_1_from:\n%s to %s\n' % (str(round(b1s, 2)),
+                                               str(round(b1e, 2))))
+    sfile.write('Block_2_from:\n%s to %s\n' % (str(round(b2s, 2)),
+                                               str(round(b2e, 2))))
     sfile.write('Block_1_length:\n%s\n' % round(b1e - b1s, 2))
     sfile.write('Block_2_length:\n%s\n' % round(b2e - b2s, 2))
     # number of trials in file
