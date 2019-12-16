@@ -13,13 +13,13 @@
 import os.path as op
 from os import mkdir
 from glob import glob
+from itertools import compress
 
 from re import findall
+import numpy as np
 
 from mne.io import read_raw_fif
-from mne import pick_types, make_fixed_length_events, Epochs, Report
-
-from autoreject import Ransac
+from mne import pick_types, Report
 
 # ========================================================================
 # --- global settings
@@ -48,6 +48,34 @@ output_path = op.join(derivatives_path, 'interpolate_bads')
 # files to be analysed
 files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
+
+def z_score_nan(x):
+    """
+        z scoring after removing nas
+
+    """
+    from scipy import nanmean, nanstd
+
+    z_score = (x - nanmean(x)) / nanstd(x)
+
+    return z_score
+
+
+#
+raw = read_raw_fif(files[0], preload=True)
+
+# index of eeg channels
+picks = pick_types(raw.info,
+                   eeg=True)
+
+
+chan_info = raw.info['chs']
+chan_locs = np.asarray([chan_info[ch]['loc'][:3] for ch in picks])
+chan_dist = np.linalg.norm(chan_locs - chan_locs[:, None], axis=-1)
+
+chan_dist[chan_dist > 0.04] = 0
+weig = np.array(chan_dist, dtype=bool)
+
 # ========================================================================
 # ----------- loop through files and detect artifacts --------------------
 for file in files:
@@ -61,54 +89,60 @@ for file in files:
     # --- 2) import the preprocessed data ----------------------
     raw = read_raw_fif(file, preload=True)
 
-    # index of eogs and stim channels
+    # index of eeg channels
     picks = pick_types(raw.info,
                        eeg=True)
 
-    # --- 3) detect and interpolate bad sensors using RANSAC ---
-    # create copy of raw and set reference
+    # --- 3) detect bad sensors via correlation ----------------
+
+    # --- 3.1) create copy of raw and set reference
     raw_copy = raw.copy()
-    # set eeg reference
+
+    # --- 3.2) apply filter to data
+    raw_copy.filter(l_freq=0.1, h_freq=40., picks=['eeg', 'eog'],
+                    filter_length='auto',
+                    l_trans_bandwidth='auto',
+                    h_trans_bandwidth='auto',
+                    method='fir',
+                    phase='zero',
+                    fir_window='hamming',
+                    fir_design='firwin',
+                    n_jobs=2)
+
+    # --- 3.4) set eeg reference
     raw_copy.set_eeg_reference(ref_channels='average',
                                projection=True)
     raw_copy.apply_proj()
-    ch_data = raw_copy.get_data(picks)
 
-    import numpy as np
-    ch_corr = np.abs(np.corrcoef(ch_data))
+    # --- 3.5) extract channel data for inspection
+    chan_data = raw_copy.get_data(picks)
 
-    neigh_max_distance = 0.04
-    ch_locs = np.asarray([x['loc'][:3] for x in raw.info['chs'][0:64]])
-    chns_dist = np.linalg.norm(ch_locs - ch_locs[:, None], axis=-1)
-    chns_dist[chns_dist > neigh_max_distance] = 0
+    # --- 3.6) compute correlation
+    chan_corr = np.corrcoef(chan_data)
 
-    weig = np.array(chns_dist, dtype=bool)
-    chn_nei_corr = np.average(ch_corr, axis=1, weights=weig)
+    # absolute values
+    chan_corr = np.abs(chan_corr)
 
-    # define length for epochs extraction
-    tstep = 1.0
+    # check for nan-values and mask them
+    masked_ch_corr = np.ma.masked_array(chan_corr, np.isnan(chan_corr))
 
-    # create epochs for detection procedure
-    events = make_fixed_length_events(raw, duration=tstep)
-    epochs = Epochs(raw_copy, events,
-                    tmin=0.0, tmax=tstep,
-                    baseline=None,
-                    reject=dict(eeg=300e-6),
-                    preload=True)
+    # --- 3.7) compute average correlation based on neighbors
+    chn_nei_corr = np.average(masked_ch_corr, axis=1, weights=weig)
+    chn_nei_corr = chn_nei_corr.filled(np.nan)
 
-    # channels that should be ignored during the artifact detection procedure
-    ignore_ch = {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}
-    # update dict
-    picks = [raw.info['ch_names'].index(chan) for chan in raw.info['ch_names'] if chan not in ignore_ch]
+    chn_nei_uncorr_z = z_score_nan(1 - chn_nei_corr)
 
-    # define RANSAC parameters
-    ransac = Ransac(verbose='progressbar', n_jobs=1)
+    max_pow = np.sqrt(np.sum(chan_data ** 2, axis=1))
+    max_Z = z_score_nan(max_pow)
 
-    # fit RANSAC algorithm to find bad sensors
-    epochs_clean = ransac.fit_transform(epochs)
+    feat_vec = (np.abs(chn_nei_uncorr_z) + np.abs(max_Z)) / 2
+    max_th = feat_vec > 3
 
-    # --- 4) interpolate bad channels --------------------------
-    raw.info['bads'] = ransac.bad_chs_
+    raw_copy.info['bads'] = list(compress(raw_copy.info['ch_names'], max_th))
+
+    raw_copy.plot(n_channels=68, scalings=dict(eeg=100e-6), bad_color='red',
+                  block=True)
+
     # create figure of sensors
     fig = raw.plot_sensors(show=False,
                            show_names=True,
