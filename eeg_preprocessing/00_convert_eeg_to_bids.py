@@ -68,29 +68,34 @@ for ind, file in enumerate(files):
                        preload=False,
                        exclude=exclude)
 
-    # --- 3) dataset info --------------------------------------
-    # keep the sampling rate
+    # sampling rate
     sfreq = raw.info['sfreq']
-    # all channels in raw
-    chans = raw.info['ch_names']
-    # channels in montage
-    montage_chans = montage.ch_names
-    # nr of eeg channels
-    n_eeg = len([chan for chan in chans if chan in montage_chans])
-    # channel types
+    # channels in dataset
+    channels = raw.info['ch_names']
+
+    # --- 3) modify dataset info -------------------------------
+    # channels in eeg-montage
+    montage_channels = montage.ch_names
+
+    # identify channel types based on matching names in montage
     types = []
-    for chan in chans:
-        if chan in montage_chans:
+    for chan in channels:
+        if chan in montage_channels:
             types.append('eeg')
         elif re.match('EOG|EXG', chan):
             types.append('eog')
         else:
             types.append('stim')
-    # create custom info for subj file
-    info_custom = create_info(chans, sfreq, types, montage)
 
-    # --- 4) add subject specific information -------------------
+    # number channels of type 'eeg' in dataset
+    n_eeg = len([chan for chan in channels if chan in montage_channels])
+
+    # create custom info for subj file
+    info_custom = create_info(channels, sfreq, types, montage)
+
+    # --- 4) add modified information to dataset ---------------
     # create tuple containing approx. birthday
+    date_of_record = raw.info['meas_date']
     date_of_record = raw.annotations.orig_time
     # unix timestap to date
     date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
