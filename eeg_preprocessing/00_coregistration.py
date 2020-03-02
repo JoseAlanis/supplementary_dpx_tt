@@ -1,6 +1,6 @@
 # --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.7.3 / mne 0.18.1
+# --- Python 3.7 / mne 0.19.2
 #
 # --- eeg pre-processing for DPX TT
 # --- version: june 2019
@@ -20,7 +20,8 @@ from mne.datasets import fetch_fsaverage
 from mne.channels import make_standard_montage
 from mne.io import read_raw_bdf
 from mne.viz import plot_alignment, plot_montage
-from mne import make_forward_solution, sensitivity_map, write_forward_solution
+from mne import make_forward_solution, sensitivity_map, \
+    write_forward_solution
 
 # ========================================================================
 # --- global settings

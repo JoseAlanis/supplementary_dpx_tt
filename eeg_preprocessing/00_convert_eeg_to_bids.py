@@ -1,9 +1,9 @@
 # --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.7 / mne 0.20
+# --- Python 3.7 / mne 0.19.2
 #
 # --- eeg pre-processing for DPX TT
-# --- version: june 2019
+# --- version: february 2019
 #
 # --- import data,
 # --- convert to bids format

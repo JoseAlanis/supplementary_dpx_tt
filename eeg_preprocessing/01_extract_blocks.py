@@ -1,9 +1,9 @@
 # --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.7 / mne 0.20
+# --- Python 3.7 / mne 0.19.2
 #
 # --- eeg pre-processing for DPX TT
-# --- version: june 2019
+# --- version: february 2019
 #
 # --- import data, drop flat channels,
 # --- extract task blocks
@@ -61,7 +61,7 @@ exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # ========================================================================
 # ------------ loop through files and extract blocks  --------------------
-for file in files[37:]:
+for file in files:
 
     # --- 1) set up paths and file names -----------------------
     filepath, filename = op.split(file)
