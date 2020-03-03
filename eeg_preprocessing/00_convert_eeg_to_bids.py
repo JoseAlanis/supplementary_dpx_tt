@@ -50,6 +50,8 @@ task = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
 montage = make_standard_montage(kind='standard_1020')
+# channels in eeg-montage
+montage_channels = montage.ch_names
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
@@ -74,9 +76,6 @@ for ind, file in enumerate(files):
     channels = raw.info['ch_names']
 
     # --- 3) modify dataset info -------------------------------
-    # channels in eeg-montage
-    montage_channels = montage.ch_names
-
     # identify channel types based on matching names in montage
     types = []
     for chan in channels:
@@ -93,23 +92,25 @@ for ind, file in enumerate(files):
     # create custom info for subj file
     info_custom = create_info(channels, sfreq, types, montage)
 
-    # --- 4) add modified information to dataset ---------------
-    # create tuple containing approx. birthday
-    date_of_record = raw.info['meas_date']
-    date_of_record = raw.annotations.orig_time
-    # unix timestap to date
+    # --- 4) compute approx. date of birth ---------------------
+    # get measurement date from dataset info
+    date_of_record = raw.info['meas_date'][0]
+    # convert to date format
     date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
-    # compute approx. date of birth
+
+    # here, we compute only and approximate of the subjects birthday
+    # this is to keep the date anonymous (at least to some degree)
     year_of_birth = int(date.split('-')[0]) - subj_demo.iloc[ind].age
     approx_birthday = (year_of_birth,
                        int(date[5:].split('-')[0]),
                        int(date[5:].split('-')[1]))
-    # add subject info to dataset info
+
+    # add modified subject info to dataset
     raw.info['subject_info'] = dict(id=int(subj),
                                     sex=subj_demo.iloc[ind].sex,
                                     birthday=approx_birthday)
 
-    # --- 4) events info ---------------------------------------
+    # --- 4) create events info --------------------------------
     # extract events
     events = find_events(raw,
                          stim_channel='Status',
@@ -132,7 +133,9 @@ for ind, file in enumerate(files):
                  'probe_2': 78,
                  'probe_3': 79,
                  'probe_4': 80,
-                 'probe_5': 81}
+                 'probe_5': 81,
+                 'start_record': 127,
+                 'pause_record': 245}
 
     # --- 5) export to bids ------------------------------------
     # file name compliant with bids

@@ -17,8 +17,11 @@ from os import mkdir
 import re
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import normalize
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
-from mne import pick_types, create_info, find_events, \
+from mne import create_info, find_events, \
     Annotations, events_from_annotations, concatenate_raws
 from mne.io import read_raw_bdf
 from mne.channels import make_standard_montage
@@ -56,8 +59,13 @@ files = sorted(glob.glob(op.join(data_path, 'eeg/*.bdf')))
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
 montage = make_standard_montage(kind='standard_1020')
+# channels in montage
+montage_chans = montage.ch_names
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
+
+# colormap to use
+cmap = cm.get_cmap('plasma')
 
 # ========================================================================
 # ------------ loop through files and extract blocks  --------------------
@@ -73,28 +81,13 @@ for file in files:
                        preload=True,
                        exclude=exclude)
 
-    # check data and remove channel with low (i.e., near zero variance)
-    # indices
-    flats = np.where(np.std(raw.get_data(), axis=1) * 1e6 < 10.)[0]
-    # names
-    flats = [raw.ch_names[ch] for ch in flats]
-    # print summary
-    print('Following channels were dropped as variance ~ 0:', flats)
-    # remove them from data set
-    raw.drop_channels(flats)
-
-    # --- 3) modify data set information  ----------------------
-    # keep the sampling rate
+    # --- 3) get info about the dataset ------------------------
+    # measurement date
+    date_of_record = raw.info['meas_date']
+    # sampling rate
     sfreq = raw.info['sfreq']
-    # and date of measurement
-    date_of_record = raw.annotations.orig_time
-
-    # all channels in raw
+    # channels
     chans = raw.info['ch_names']
-    # channels in montage
-    montage_chans = montage.ch_names
-    # nr of eeg channels
-    n_eeg = len([chan for chan in chans if chan in montage_chans])
     # channel types
     types = []
     for chan in chans:
@@ -104,6 +97,76 @@ for file in files:
             types.append('eog')
         else:
             types.append('stim')
+    # nr of eeg channels
+    n_eeg = len([chan for chan in chans if chan in montage_chans])
+
+    # create custom info for subj file
+    info_custom = create_info(chans, sfreq, types, montage)
+
+    # add improved dataset info
+    raw.info = info_custom
+    raw.info['meas_date'] = date_of_record
+
+    # --- 3) check channels variance ----------------------------
+    # check if dataset contains channels with zero or near zero variance
+    # (i.e., flat lines)
+    eeg_channel_variance = np.var(raw.get_data(picks='eeg'), axis=1) * 100e6
+    norm_var = normalize(eeg_channel_variance[:, np.newaxis], axis=0).ravel()
+
+    fig, ax = plt.subplots(figsize=(5, 10))
+    for i in range(norm_var.shape[0]):
+        ax.barh(i, norm_var[i], 0.9, color=cmap(norm_var[i]))
+        ax.text(norm_var[i] + 0.05, i, raw.info['ch_names'][i],
+                ha='center', va='center', fontsize=9)
+
+    ax.set_xlim(0, 1)
+    plt.title('eeg channel variance')
+    plt.xlabel('normalized variance')
+    plt.ylabel('channels')
+    plt.show()
+
+    eog_channel_variance = np.var(raw.get_data(picks='eog'), axis=1) * 100e6
+    norm_eog_var = normalize(eog_channel_variance[:, np.newaxis], axis=0).ravel()
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+    for i in range(norm_eog_var.shape[0]):
+        ax.barh(i, norm_eog_var[i], 0.9, color=cmap(norm_var[i]))
+        ax.text(norm_eog_var[i] + 0.05, i, raw.info['ch_names'][n_eeg + i],
+                ha='center', va='center', fontsize=9)
+
+    ax.set_xlim(0, 1)
+    plt.title('eog channel variance')
+    plt.xlabel('normalized variance')
+    plt.ylabel('channels')
+    plt.show()
+
+
+
+    # indices
+    flats = np.where(np.var(raw.get_data(), axis=1) * 1e6 < 10.)[0]
+    # names
+    flats = [raw.ch_names[ch] for ch in flats]
+    # print summary
+    print('Following channels were dropped as variance ~ 0:', flats)
+
+    fig, ax = plt.subplots()
+    for i in range(data.shape[1]):
+        ax.bar(x + dx[i], data[:, i], width=d, label="label {}".format(i))
+
+    plt.legend(framealpha=1).draggable()
+    plt.show()
+
+
+    # remove them from data set
+    raw.drop_channels(flats)
+
+    # --- 3) modify data set information  ----------------------
+    # keep the sampling rate
+    sfreq = raw.info['sfreq']
+    # and date of measurement
+    date_of_record = raw.annotations.orig_time
+
+
 
     # create custom info for subj file
     info_custom = create_info(chans, sfreq, types, montage)
