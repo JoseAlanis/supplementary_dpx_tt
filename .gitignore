@@ -3,3 +3,6 @@
 # PyCharm
 .idea/**
 eeg_preprocessing/.idea/**
+
+# cache
+__pycache__/
