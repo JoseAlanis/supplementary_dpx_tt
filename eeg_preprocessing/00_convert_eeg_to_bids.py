@@ -1,15 +1,17 @@
-# --- jose C. garcia alanis
-# --- utf-8
-# --- Python 3.7 / mne 0.19.2
-#
-# --- eeg pre-processing for DPX TT
-# --- version: february 2019
-#
-# --- import data,
-# --- convert to bids format
+"""
+========================================================
+Bring data set into BIDS a compliant directory structure
+========================================================
 
-# ========================================================================
-# ------------------- import relevant extensions -------------------------
+Authors: José C. García Alanis <alanis.jcg@gmail.com>
+
+License: BSD (3-clause)
+
+Notes
+------
+Versions: Python 3.7; mne 0.19.2
+
+"""
 import glob
 import os
 import re
