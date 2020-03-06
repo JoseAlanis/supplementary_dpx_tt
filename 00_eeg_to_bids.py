@@ -9,8 +9,10 @@ License: BSD (3-clause)
 """
 import argparse
 import re
-from datetime import datetime
+import os.path as op
+from os import mkdir
 
+from datetime import datetime
 from pandas import read_csv
 
 from mne.io import read_raw_bdf
@@ -117,7 +119,7 @@ events_id = {'correct_target_button': 13,
 # 5) export to bids
 # file name compliant with bids
 bids_basename = make_bids_basename(
-    subject=str(subject).rjust(3, '0'),
+    subject=subject.rjust(3, '0'),
     task=task_name)
 
 # save in bids format
@@ -127,3 +129,19 @@ write_raw_bids(raw,
                event_id=events_id,
                events_data=events,
                overwrite=True)
+
+# output path
+output_path = fname.derivatives(subject=int(subject),
+                                processing_step='raw_files')
+
+# create directory for save
+if not op.exists(output_path):
+    mkdir(output_path)
+
+# output file name
+output = fname.output(subject=int(subject),
+                      processing_step='raw_files',
+                      file_type='raw')
+
+# save file
+raw.save(output, overwrite=True)
