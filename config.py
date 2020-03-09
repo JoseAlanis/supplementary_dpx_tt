@@ -31,13 +31,13 @@ if user == 'josealanis' and '.uni-marburg.de' in host:
     # iMac at work
     data_dir = '../data'
     n_jobs = 2  # iMac has 4 cores (we'll use 2).
-# elif user == 'josealanis' and host == 'josealanis-desktop':
-#     # pc at home
-#     raw_data_dir = './data'
-#     n_jobs = 16  # My workstation has 16 cores (we'll use 8).
+elif user == 'josealanis' and host == 'josealanis-desktop':
+    # pc at home
+    data_dir = '../data'
+    n_jobs = 8  # My workstation has 16 cores (we'll use 8).
 else:
     # Defaults
-    data_dir = './data'
+    data_dir = '../data'
     n_jobs = 1
 
 # For BLAS to use the right amount of cores

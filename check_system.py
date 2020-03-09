@@ -30,6 +30,7 @@ if not os.path.exists(fname.data_dir):
 # Make sure the output directories exist
 os.makedirs(fname.derivatives_dir, exist_ok=True)
 os.makedirs(fname.derivatives_dir + '/raw_files', exist_ok=True)
+os.makedirs(fname.derivatives_dir + '/task_blocks', exist_ok=True)
 
 # directories for reports
 os.makedirs(fname.reports_dir, exist_ok=True)
