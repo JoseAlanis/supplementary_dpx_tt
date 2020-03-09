@@ -13,6 +13,7 @@ import os
 import getpass
 from socket import getfqdn
 
+import argparse
 import numpy as np
 
 from utils import FileNames
@@ -20,6 +21,13 @@ from utils import FileNames
 from mne.channels import make_standard_montage
 
 ###############################################################################
+# User parser to handle command line arguments
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('subject',
+                    metavar='sub###',
+                    help='The subject to process',
+                    type=int)
+
 # Determine which user is running the scripts on which machine. Set the path to
 # where the data is stored and determine how many CPUs to use for analysis.
 
@@ -56,7 +64,7 @@ exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # subjects to use for analysis
 # subjects = [str(i).rjust(2, '0') for i in np.arange(1, 53)]
-subjects = np.arange(1, 53)
+subjects = np.arange(1, 2)
 
 ###############################################################################
 # Templates for filenames
@@ -69,28 +77,23 @@ fname = FileNames()
 # directories to use for input and output
 fname.add('data_dir', data_dir)
 fname.add('bids_data', '{data_dir}/sub-{subject:03d}')
-fname.add('subject_demographics', '{data_dir}/subject_data/subject_demographics.tsv')
-fname.add('sourcedata_dir',
-          '{data_dir}/sourcedata')
-fname.add('derivatives_dir',
-          '{data_dir}/derivatives')
+fname.add('subject_demographics', '{data_dir}/subject_data/subject_demographics.tsv')  # noqa: E501
+fname.add('sourcedata_dir', '{data_dir}/sourcedata')
+fname.add('derivatives_dir', '{data_dir}/derivatives')
 fname.add('reports_dir', '{derivatives_dir}/reports')
 fname.add('results', '{derivatives_dir}/results')
 fname.add('figures', '{results}/figures')
 
-# The data files that are used and produced by the analysis steps
-fname.add('source',
-          '{sourcedata_dir}/sub-{subject:02d}/sub-{subject:02d}.bdf')
-fname.add('derivatives',
-          '{derivatives_dir}/{processing_step}/sub-{subject:03d}')
-fname.add('output',
-          '{derivatives}/sub-{subject:03d}-{processing_step}-{file_type}.fif')
+# The paths for data file input
+fname.add('source', '{sourcedata_dir}/sub-{subject:02d}/sub-{subject:02d}.bdf')
+
+# The paths that are produced by the analysis steps
+fname.add('derivatives', '{derivatives_dir}/{processing_step}/sub-{subject:03d}')  # noqa: E501
+fname.add('output', '{derivatives}/sub-{subject:03d}-{processing_step}-{file_type}.fif')  # noqa: E501
 
 # Filenames for MNE reports
-fname.add('report',
-          '{reports_dir}/sub-{subject:03d}/sub-{subject:03d}-{processing_step}-report.h5')  # noqa: E501
-fname.add('report_html',
-          '{derivatives}/sub-{subject:03d}/sub-{subject:03d}-{processing_step}-report.html')  # noqa: E501
+fname.add('report', '{reports_dir}/sub-{subject:03d}/sub-{subject:03d}-{processing_step}-report.h5')  # noqa: E501
+fname.add('report_html', '{derivatives}/sub-{subject:03d}/sub-{subject:03d}-{processing_step}-report.html')  # noqa: E501
 
 # File produced by check_system.py
 fname.add('system_check', './system_check.txt')
