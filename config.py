@@ -10,6 +10,7 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 License: BSD (3-clause)
 """
 import os
+from os import path as op
 import getpass
 from socket import getfqdn
 
@@ -63,8 +64,7 @@ montage = make_standard_montage(kind='standard_1020')
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # subjects to use for analysis
-# subjects = [str(i).rjust(2, '0') for i in np.arange(1, 53)]
-subjects = np.arange(1, 2)
+subjects = np.arange(1, 53)
 
 ###############################################################################
 # Templates for filenames
@@ -87,13 +87,27 @@ fname.add('figures', '{results}/figures')
 # The paths for data file input
 fname.add('source', '{sourcedata_dir}/sub-{subject:02d}/sub-{subject:02d}.bdf')
 
-# The paths that are produced by the analysis steps
-fname.add('derivatives', '{derivatives_dir}/{processing_step}/sub-{subject:03d}')  # noqa: E501
-fname.add('output', '{derivatives}/sub-{subject:03d}-{processing_step}-{file_type}.fif')  # noqa: E501
 
-# Filenames for MNE reports
-fname.add('report', '{reports_dir}/sub-{subject:03d}/sub-{subject:03d}-{processing_step}-report.h5')  # noqa: E501
-fname.add('report_html', '{derivatives}/sub-{subject:03d}/sub-{subject:03d}-{processing_step}-report.html')  # noqa: E501
+# The paths that are produced by the analysis steps
+def output_path(path, processing_step, subject, file_type):
+    path = op.join(path.derivatives_dir, processing_step, 'sub-%03d' % subject)
+    os.makedirs(path, exist_ok=True)
+    return op.join(path, 'sub-%03d-%s-%s' % (subject, processing_step, file_type))  # noqa: E501
+
+
+# The full path for data file output
+fname.add('output', output_path)
+
+
+# The paths that are produced by the report step
+def report_path(path, subject):
+    h5_path = op.join(path.reports_dir, 'sub-%03d.h5' % subject)
+    html_path = op.join(path.reports_dir, 'sub-%03d-report.html' % subject)
+    return h5_path, html_path
+
+
+# The full path for report file output
+fname.add('report', report_path)
 
 # File produced by check_system.py
 fname.add('system_check', './system_check.txt')

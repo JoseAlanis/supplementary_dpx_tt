@@ -8,13 +8,12 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 License: BSD (3-clause)
 """
 import os.path as op
-from os import mkdir
 
 from datetime import datetime
 import pandas as pd
 
 from mne.io import read_raw_bdf
-from mne import find_events, Annotations
+from mne import find_events, Annotations, open_report
 
 from mne_bids import write_raw_bids, make_bids_basename
 
@@ -128,48 +127,46 @@ write_raw_bids(raw,
                overwrite=True)
 
 ###############################################################################
-# 6) export data to .fif for further processing
+# 6) Extract events from the status channel and save them as file annotations
 # events to data frame
 events = pd.DataFrame(events,
-                      columns=['onset', 'duration', 'description'],
-                      )
-
-events['onset'] = pd.to_numeric(events['onset'])
-
-events['onset'] = events.onset / raw.info['sfreq']
-
-# merge with annotations
-events = events.append(annotations, ignore_index=True)
+                      columns=['onset', 'duration', 'description'])
+# onset to seconds
+events['onset_in_s'] = events['onset'] / raw.info['sfreq']
 # sort by onset
-events = events.sort_values(by=['onset'])
+events = events.sort_values(by=['onset_in_s'])
+# only keep relevant events
+events = events.loc[(events['description'] <= 245)]
 
 # crate annotations object
-annotations = Annotations(events['onset'],
+annotations = Annotations(events['onset_in_s'],
                           events['duration'],
                           events['description'],
                           orig_time=raw.info['meas_date'])
 # apply to raw data
 raw.set_annotations(annotations)
 
-# drop stimulus channel
-raw_blocks.drop_channels('Status')
+###############################################################################
+# 7) Plot the data for report
+raw_plot = raw.plot(scalings=dict(eeg=50e-6, eog=50e-6),
+                    n_channels=len(raw.info['ch_names']),
+                    show=False)
 
-raw.plot(n_channels=len(raw.ch_names),
-         scalings=dict(eeg=100e-6),
-         block=True)
-
+###############################################################################
+# 8) export data to .fif for further processing
 # output path
-output_path = fname.derivatives(subject=subject,
-                                processing_step='raw_files')
-
-# # create directory for save
-if not op.exists(output_path):
-    mkdir(output_path)
-
-# output file name
-output_file = fname.output(subject=subject,
-                           processing_step='raw_files',
-                           file_type='raw')
+output_path = fname.output(processing_step='raw_files',
+                           subject=subject,
+                           file_type='raw.fif')
 
 # save file
-raw.save(output_file, overwrite=True)
+raw.save(output_path, overwrite=True)
+
+###############################################################################
+# 9) create HTML report
+with open_report(fname.report(subject=subject)[0]) as report:
+    report.parse_folder(op.dirname(output_path), pattern='*.fif')
+    report.add_figs_to_section(raw_plot, 'Raw data', section='raw_data',
+                               replace=True)
+    report.save(fname.report(subject=subject)[1], overwrite=True,
+                open_browser=False)
