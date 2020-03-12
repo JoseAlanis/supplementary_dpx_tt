@@ -59,12 +59,31 @@ task_name = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
 montage = make_standard_montage(kind='standard_1020')
-
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
 # subjects to use for analysis
 subjects = np.arange(1, 53)
+
+# relevant events in the paradigm
+event_ids = {'correct_target_button': 13,
+             'correct_non_target_button': 12,
+             'incorrect_target_button': 113,
+             'incorrect_non_target_button': 112,
+             'cue_0': 70,
+             'cue_1': 71,
+             'cue_2': 72,
+             'cue_3': 73,
+             'cue_4': 74,
+             'cue_5': 75,
+             'probe_0': 76,
+             'probe_1': 77,
+             'probe_2': 78,
+             'probe_3': 79,
+             'probe_4': 80,
+             'probe_5': 81,
+             'start_record': 127,
+             'pause_record': 245}
 
 ###############################################################################
 # Templates for filenames

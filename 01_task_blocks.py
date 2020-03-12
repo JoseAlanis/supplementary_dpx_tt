@@ -24,52 +24,78 @@ subject = args.subject
 print('Converting subject %s to BIDS' % subject)
 
 ###############################################################################
-# 2) import the output from previous processing step
+# 1) import the output from previous processing step
 input_file = fname.output(subject=subject,
                           processing_step='raw_files',
-                          file_type='raw')
-
+                          file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
 
-# get events
-events = find_events(raw,
-                     stim_channel='Status',
-                     output='onset',
-                     min_duration=0.002)
+# drop status channel
+raw.drop_channels('Status')
+
+###############################################################################
+# 2) Find periods of time in the data with no presented stimuli (i.e., the
+# self-paced breaks)
+
+# relevant events
+ids = {'127': 1,
+       '245': 2,
+       '13': 3,
+       '12': 4,
+       '113': 5,
+       '112': 6,
+       '70': 7,
+       '71': 8,
+       '72': 9,
+       '73': 10,
+       '74': 11,
+       '75': 12,
+       '76': 13,
+       '77': 14,
+       '78': 15,
+       '79': 16,
+       '80': 17,
+       '81': 18
+       }
+
+# extract events
+events = events_from_annotations(raw, event_id=ids)
 
 # cue events
-cue_evs = events[(events[:, 2] >= 70) & (events[:, 2] <= 75)]
+cue_evs = events[0]
+cue_evs = cue_evs[(cue_evs[:, 2] >= 7) & (cue_evs[:, 2] <= 12)]
 
 # latencies and difference between two consecutive cues
 latencies = cue_evs[:, 0] / raw.info['sfreq']
 diffs = [(y - x) for x, y in zip(latencies, latencies[1:])]
 
-# Get first event after a long break (i.e., pauses between blocks),
-# Time difference in between blocks should be  > 10 seconds)
+# get first event after a long break (i.e., when the time difference between
+# stimuli is greater than 10 seconds). This should only be the case in betweenn
+# task blocks.
 breaks = [diff for diff in range(len(diffs)) if diffs[diff] > 10]
 print('\n Identified breaks at positions', breaks)
 
 # --- 7) save start and end points of task blocks  ---------
 # subject '041' has more practice trials
 if subject == 41:
-    # start first block
+    # start of first block
     b1s = latencies[breaks[2] + 1] - 2
     # end of first block
     b1e = latencies[breaks[3]] + 6
 
-    # start second block
+    # start of second block
     b2s = latencies[breaks[3] + 1] - 2
     # end of second block
     b2e = latencies[breaks[4]] + 6
 
 # all other subjects have the same structure
 else:
-    # start first block
+    # start of first block
     b1s = latencies[breaks[0] + 1] - 2
     # end of first block
     b1e = latencies[breaks[1]] + 6
 
-    # start second block
+    # start of second block
     b2s = latencies[breaks[1] + 1] - 2
     # end of second block
     if len(breaks) > 2:
@@ -82,6 +108,9 @@ else:
 raw_bl1 = raw.copy().crop(tmin=b1s, tmax=b1e)
 # Block 2
 raw_bl2 = raw.copy().crop(tmin=b2s, tmax=b2e)
+
+# --- 9) concatenate data ----------------------------------
+raw_blocks = concatenate_raws([raw_bl1, raw_bl2])
 
 ref_raw_bl1 = raw_bl1.copy().set_eeg_reference(ref_channels='average', projection=True)
 
@@ -98,11 +127,6 @@ raw_bl1_filt = raw_bl1.copy().filter(l_freq=0.1, h_freq=40., picks=['eeg', 'eog'
 ref_raw_bl1.plot(scalings=dict(eeg=100e-6, eog=100e-6), n_channels=len(raw.info['ch_names']))
 raw_bl1.plot(scalings=dict(eeg=100e-6, eog=100e-6), n_channels=len(raw.info['ch_names']))
 raw_bl1_filt.plot(scalings=dict(eeg=100e-6, eog=100e-6), n_channels=len(raw.info['ch_names']))
-
-
-# --- 9) concatenate data ----------------------------------
-raw_blocks = concatenate_raws([raw_bl1, raw_bl2])
-
 
 # --- 10) lower the sample rate  ---------------------------
 raw_blocks.resample(sfreq=256.)

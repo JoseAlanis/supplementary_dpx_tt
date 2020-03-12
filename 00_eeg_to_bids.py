@@ -18,7 +18,7 @@ from mne import find_events, Annotations, open_report
 from mne_bids import write_raw_bids, make_bids_basename
 
 # All parameters are defined in config.py
-from config import fname, exclude, task_name, montage, parser
+from config import fname, exclude, task_name, montage, event_ids, parser
 
 ###############################################################################
 # Handle command line arguments
@@ -91,26 +91,6 @@ events = find_events(raw,
                      output='onset',
                      min_duration=0.002)
 
-# event ids
-events_id = {'correct_target_button': 13,
-             'correct_non_target_button': 12,
-             'incorrect_target_button': 113,
-             'incorrect_non_target_button': 112,
-             'cue_0': 70,
-             'cue_1': 71,
-             'cue_2': 72,
-             'cue_3': 73,
-             'cue_4': 74,
-             'cue_5': 75,
-             'probe_0': 76,
-             'probe_1': 77,
-             'probe_2': 78,
-             'probe_3': 79,
-             'probe_4': 80,
-             'probe_5': 81,
-             'start_record': 127,
-             'pause_record': 245}
-
 ###############################################################################
 # 5) export to bids
 # file name compliant with bids
@@ -122,7 +102,7 @@ bids_basename = make_bids_basename(
 write_raw_bids(raw,
                bids_basename,
                fname.data_dir,
-               event_id=events_id,
+               event_id=event_ids,
                events_data=events,
                overwrite=True)
 
