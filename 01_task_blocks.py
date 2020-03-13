@@ -10,7 +10,7 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
-import os.path as op
+import matplotlib.pyplot as plt
 
 from mne.io import read_raw_fif
 from mne import events_from_annotations, concatenate_raws, open_report
@@ -25,7 +25,7 @@ subject = args.subject
 print('Converting subject %s to BIDS' % subject)
 
 ###############################################################################
-# 1) import the output from previous processing step
+# 1) Import the output from previous processing step
 input_file = fname.output(subject=subject,
                           processing_step='raw_files',
                           file_type='raw.fif')
@@ -106,33 +106,52 @@ else:
         b2e = latencies[-1] + 6
 
 ###############################################################################
-# 4) extract data belonging to the task blocks an concatenate
+# 4) Extract data belonging to the task blocks an concatenate
 # block 1
 raw_bl1 = raw.copy().crop(tmin=b1s, tmax=b1e)
 # block 2
 raw_bl2 = raw.copy().crop(tmin=b2s, tmax=b2e)
 
 # concatenate data
-raw_blocks = concatenate_raws([raw_bl1, raw_bl2])
+raw_bl = concatenate_raws([raw_bl1, raw_bl2])
 
 ###############################################################################
-# 5) remove drifts and line noise
-raw_blocks_filt = raw_blocks.copy().filter(l_freq=0.1, h_freq=40.,
-                                           picks=['eeg', 'eog'],
-                                           filter_length='auto',
-                                           l_trans_bandwidth='auto',
-                                           h_trans_bandwidth='auto',
-                                           method='fir',
-                                           phase='zero',
-                                           fir_window='hamming',
-                                           fir_design='firwin',
-                                           n_jobs=n_jobs)
+# 5) Remove slow drifts and line noise
+
+# Setting up band-pass filter from 0.1 - 40 Hz
+#
+# FIR filter parameters
+# ---------------------
+# Designing a one-pass, zero-phase, non-causal bandpass filter:
+# - Windowed time-domain design (firwin) method
+# - Hamming window with 0.0194 passband ripple and 53 dB stopband attenuation
+# - Lower passband edge: 0.10
+# - Lower transition bandwidth: 0.10 Hz (-6 dB cutoff frequency: 0.05 Hz)
+# - Upper passband edge: 40.00 Hz
+# - Upper transition bandwidth: 10.00 Hz (-6 dB cutoff frequency: 45.00 Hz)
+# - Filter length: 8449 samples (33.004 sec)
+raw_bl_filt = raw_bl.copy().filter(l_freq=0.1, h_freq=40.,
+                                   picks=['eeg', 'eog'],
+                                   filter_length='auto',
+                                   l_trans_bandwidth='auto',
+                                   h_trans_bandwidth='auto',
+                                   method='fir',
+                                   phase='zero',
+                                   fir_window='hamming',
+                                   fir_design='firwin',
+                                   n_jobs=n_jobs)
+
+# plot filtered data
+filt_plot = raw_bl_filt.plot(scalings=dict(eeg=50e-6, eog=50e-6),
+                             n_channels=len(raw_bl_filt.info['ch_names']),
+                             show=False)
 
 # plot power spectral density
-raw_psd = raw_blocks_filt.plot_psd(show=False)
+fig, ax = plt.subplots(figsize=(10, 5))
+raw_bl_filt.plot_psd(show=False, ax=ax)
 
 ###############################################################################
-# 6) export data to .fif for further processing
+# 6) Export data to .fif for further processing
 # output path
 output_path = fname.output(processing_step='task_blocks',
                            subject=subject,
@@ -142,9 +161,24 @@ output_path = fname.output(processing_step='task_blocks',
 raw.save(output_path, overwrite=True)
 
 ###############################################################################
-# 7) create HTML report
+# 7) Create HTML report
+blocks_duration = '<p>Block 1 Duration from %s to %s seconds.<br>'\
+                  'Block 1 length: %s seconds<p>'\
+                  '<p>Block 2 Duration from %s to %s seconds.<br>'\
+                  'Block 2 length: %s seconds<p>' \
+                  % (round(b1s, 2), round(b1e, 2), round(b1e - b1s, 2),
+                     round(b2s, 2), round(b2e, 2), round(b2e - b2s, 2))
+
 with open_report(fname.report(subject=subject)[0]) as report:
-    report.add_figs_to_section(raw_psd, 'Blocks PSD', section='Filtered Data',
+    report.add_htmls_to_section(htmls=blocks_duration,
+                                captions='Durations',
+                                section='Filtered data')
+    report.add_figs_to_section(fig, 'Blocks PSD',
+                               section='Filtered data',
+                               replace=True)
+    report.add_figs_to_section(filt_plot,
+                               'Filtered data',
+                               section='Filtered data',
                                replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)

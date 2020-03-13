@@ -33,7 +33,7 @@ subj_demo = pd.read_csv(fname.subject_demographics, sep='\t', header=0)
 
 ###############################################################################
 input_file = fname.source(subject=subject)
-# 1) import the data
+# 1) Import the data
 raw = read_raw_bdf(input_file,
                    preload=False,
                    exclude=exclude)
@@ -44,7 +44,7 @@ sfreq = raw.info['sfreq']
 channels = raw.info['ch_names']
 
 ###############################################################################
-# 2) modify dataset info
+# 2) Modify dataset info
 # identify channel types based on matching names in montage
 types = []
 for chan in channels:
@@ -84,7 +84,7 @@ raw.info['subject_info'] = dict(id=subject,
 raw.info['line_freq'] = 50.0
 
 ###############################################################################
-# 4) create events info
+# 4) Create events info
 # extract events
 events = find_events(raw,
                      stim_channel='Status',
@@ -92,7 +92,7 @@ events = find_events(raw,
                      min_duration=0.002)
 
 ###############################################################################
-# 5) export to bids
+# 5) Export to bids
 # file name compliant with bids
 bids_basename = make_bids_basename(
     subject=str(subject).rjust(3, '0'),
@@ -133,7 +133,7 @@ raw_plot = raw.plot(scalings=dict(eeg=50e-6, eog=50e-6),
                     show=False)
 
 ###############################################################################
-# 8) export data to .fif for further processing
+# 8) Export data to .fif for further processing
 # output path
 output_path = fname.output(processing_step='raw_files',
                            subject=subject,
@@ -143,10 +143,14 @@ output_path = fname.output(processing_step='raw_files',
 raw.save(output_path, overwrite=True)
 
 ###############################################################################
-# 9) create HTML report
+# 9) Create HTML report
 with open_report(fname.report(subject=subject)[0]) as report:
-    report.parse_folder(op.dirname(output_path), pattern='*.fif')
-    report.add_figs_to_section(raw_plot, 'Raw data', section='raw_data',
+    report.parse_folder(op.dirname(output_path),
+                        pattern='*.fif',
+                        render_bem=False)
+    report.add_figs_to_section(raw_plot,
+                               'Raw data',
+                               section='Raw data',
                                replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)
