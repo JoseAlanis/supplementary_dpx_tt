@@ -71,7 +71,7 @@ def task_task_blocks():
     for subject in subjects:
         yield dict(
             # This task should come after `task_check`
-            task_dep=['eeg_to_bids'],
+            task_dep=['check', 'eeg_to_bids'],
 
             # A name for the sub-task: set to the name of the subject
             name=subject,

@@ -158,7 +158,7 @@ output_path = fname.output(processing_step='task_blocks',
                            file_type='raw.fif')
 
 # save file
-raw.save(output_path, overwrite=True)
+raw_bl_filt.save(output_path, overwrite=True)
 
 ###############################################################################
 # 7) Create HTML report
