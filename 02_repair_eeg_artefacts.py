@@ -17,7 +17,7 @@ import numpy as np
 from mne import create_info
 from mne.io import read_raw_fif, RawArray
 
-from scipy.stats import median_absolute_deviation as MAD
+from scipy.stats import median_absolute_deviation as mad
 
 # All parameters are defined in config.py
 from config import fname, n_jobs, parser
@@ -44,11 +44,12 @@ eeg_signal = raw_copy.get_data(picks='eeg')
 
 ref_signal = np.nanmedian(eeg_signal, axis=0)
 
+mad_scores = [mad(eeg_signal[i, :]) for i in range(eeg_signal.shape[0])]
+
+robust_z_scores_dev = (mad_scores - np.nanmedian(mad_scores)) / mad(mad_scores)
+
 # mask
 mask = [0] * eeg_signal.shape[0]
-
-
-[MAD(eeg_signal[i, :]) * 1e6 for i in range(eeg_signal.shape[0])]
 
 # TEST
 ref_signal = ref_signal.reshape(1, ref_signal.shape[0])
