@@ -21,6 +21,21 @@ from utils import FileNames
 
 from mne.channels import make_standard_montage
 
+
+###############################################################################
+class LoggingFormat:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+
 ###############################################################################
 # User parser to handle command line arguments
 parser = argparse.ArgumentParser(description=__doc__)
@@ -31,7 +46,6 @@ parser.add_argument('subject',
 
 # Determine which user is running the scripts on which machine. Set the path to
 # where the data is stored and determine how many CPUs to use for analysis.
-
 user = getpass.getuser()  # Username
 host = getfqdn()  # Hostname
 

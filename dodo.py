@@ -11,8 +11,6 @@ Notes
 -----
 - for more on doit: http://pydoit.org
 """
-import numpy as np
-
 from config import fname, subjects
 
 # Configuration for the "doit" tool.
@@ -96,8 +94,10 @@ def task_task_blocks():
 # def task_example_summary():
 #     """Step 01: Average across subjects."""
 #     return dict(
-#         task_dep=['example_step'],  # This task should come after `task_example_step`
-#         file_dep=[fname.output(subject=s) for s in subjects] + ['01_grand_average.py'],
+#         task_dep=['example_step'],  # This task should come after
+#         `task_example_step`
+#         file_dep=[fname.output(subject=s) for s in subjects] + [
+#         '01_grand_average.py'],
 #         targets=[fname.grand_average],
 #         actions=['python 01_grand_average.py'],
 #     )

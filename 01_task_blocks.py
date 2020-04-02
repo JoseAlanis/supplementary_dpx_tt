@@ -16,13 +16,16 @@ from mne.io import read_raw_fif
 from mne import events_from_annotations, concatenate_raws, open_report
 
 # All parameters are defined in config.py
-from config import fname, n_jobs, parser
+from config import fname, n_jobs, parser, LoggingFormat
 
 # Handle command line arguments
 args = parser.parse_args()
 subject = args.subject
 
-print('Converting subject %s to BIDS' % subject)
+print(LoggingFormat.PURPLE +
+      LoggingFormat.BOLD +
+      'Extracting task blocks for subject %s' % subject +
+      LoggingFormat.END)
 
 ###############################################################################
 # 1) Import the output from previous processing step
@@ -148,7 +151,7 @@ filt_plot = raw_bl_filt.plot(scalings=dict(eeg=50e-6, eog=50e-6),
 
 # plot power spectral density
 fig, ax = plt.subplots(figsize=(10, 5))
-raw_bl_filt.plot_psd(show=False, ax=ax)
+raw_bl_filt.plot_psd(fmax=70, show=False, ax=ax)
 
 ###############################################################################
 # 6) Export data to .fif for further processing

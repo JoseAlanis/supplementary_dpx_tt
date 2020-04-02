@@ -9,7 +9,6 @@ License: BSD (3-clause)
 """
 import os.path as op
 
-from datetime import datetime
 import pandas as pd
 
 from mne.io import read_raw_bdf
@@ -18,18 +17,23 @@ from mne import find_events, Annotations, open_report
 from mne_bids import write_raw_bids, make_bids_basename
 
 # All parameters are defined in config.py
-from config import fname, exclude, task_name, montage, event_ids, parser
+from config import fname, exclude, task_name, montage, event_ids, parser, \
+    LoggingFormat
 
 ###############################################################################
+# Start processing step
+
 # Handle command line arguments
 args = parser.parse_args()
 subject = args.subject
 
-print('Converting subject %s to BIDS' % subject)
+print(LoggingFormat.PURPLE +
+      LoggingFormat.BOLD +
+      'Converting subject %s to BIDS' % subject +
+      LoggingFormat.END)
 
-###############################################################################
 # Subject information (e.g., age, sex)
-subj_demo = pd.read_csv(fname.subject_demographics, sep='\t', header=0)
+demo = pd.read_csv(fname.subject_demographics, sep='\t', header=0)
 
 ###############################################################################
 input_file = fname.source(subject=subject)
@@ -63,12 +67,13 @@ raw.set_montage(montage)
 # get measurement date from dataset info
 date_of_record = raw.info['meas_date']
 # convert to date format
-date = datetime.utcfromtimestamp(date_of_record[0]).strftime('%Y-%m-%d')
+date = date_of_record.strftime('%Y-%m-%d')
+# date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
 
 # here, we compute only and approximate of the subjects birthday
 # this is to keep the date anonymous (at least to some degree)
-age = subj_demo[subj_demo.subject_id == 'sub-' + str(subject).rjust(3, '0')].age
-sex = subj_demo[subj_demo.subject_id == 'sub-' + str(subject).rjust(3, '0')].sex
+age = demo[demo.subject_id == 'sub-' + str(subject).rjust(3, '0')].age
+sex = demo[demo.subject_id == 'sub-' + str(subject).rjust(3, '0')].sex
 
 year_of_birth = int(date.split('-')[0]) - int(age)
 approx_birthday = (year_of_birth,
