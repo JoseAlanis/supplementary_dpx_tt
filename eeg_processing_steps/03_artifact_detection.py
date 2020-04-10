@@ -1,6 +1,6 @@
 # --- jose C. garcia alanis
 # --- utf-8
-# --- Python 3.7.3 / mne 0.18.1
+# --- Python 3.7 / mne 0.20
 #
 # --- eeg pre-processing for DPX TT
 # --- version: june 2019
@@ -50,10 +50,10 @@ files = sorted(glob(op.join(data_path, 'sub-*', '*-raw.fif')))
 
 # ========================================================================
 # ----------- loop through files and detect artifacts --------------------
-for file in files[26:]:
+for file in files:
 
     # --- 1) set up paths and file names -----------------------
-    filepath, filename = op.split(file)
+    file_path, filename = op.split(file)
     # subject in question
     subj = findall(r'\d+', filename)[0].rjust(3, '0')
 
@@ -78,10 +78,8 @@ for file in files[26:]:
     # sampling frequency
     sfreq = raw.info['sfreq']
 
-    # --- 3) mark bad channels and segments --------------------
     # channels that should be ignored during the artifact detection procedure
     ignore_ch = {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}
-
     # update dict
     ignore_ch.update({raw.info['ch_names'][chan] for chan in picks_no_eeg})
 

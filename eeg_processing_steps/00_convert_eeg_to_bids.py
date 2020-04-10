@@ -1,15 +1,17 @@
-# --- jose C. garcia alanis
-# --- utf-8
-# --- Python 3.7.3 / mne 0.18.1
-#
-# --- eeg pre-processing for DPX TT
-# --- version: june 2019
-#
-# --- import data,
-# --- convert to bids format
+"""
+========================================================
+Bring data set into BIDS a compliant directory structure
+========================================================
 
-# ========================================================================
-# ------------------- import relevant extensions -------------------------
+Authors: José C. García Alanis <alanis.jcg@gmail.com>
+
+License: BSD (3-clause)
+
+Notes
+------
+Versions: Python 3.7; mne 0.19.2
+
+"""
 import glob
 import os
 import re
@@ -50,6 +52,8 @@ task = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
 montage = make_standard_montage(kind='standard_1020')
+# channels in eeg-montage
+montage_channels = montage.ch_names
 
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
@@ -68,43 +72,47 @@ for ind, file in enumerate(files):
                        preload=False,
                        exclude=exclude)
 
-    # --- 3) dataset info --------------------------------------
-    # keep the sampling rate
+    # sampling rate
     sfreq = raw.info['sfreq']
-    # all channels in raw
-    chans = raw.info['ch_names']
-    # channels in montage
-    montage_chans = montage.ch_names
-    # nr of eeg channels
-    n_eeg = len([chan for chan in chans if chan in montage_chans])
-    # channel types
+    # channels in dataset
+    channels = raw.info['ch_names']
+
+    # --- 3) modify dataset info -------------------------------
+    # identify channel types based on matching names in montage
     types = []
-    for chan in chans:
-        if chan in montage_chans:
+    for chan in channels:
+        if chan in montage_channels:
             types.append('eeg')
         elif re.match('EOG|EXG', chan):
             types.append('eog')
         else:
             types.append('stim')
-    # create custom info for subj file
-    info_custom = create_info(chans, sfreq, types, montage)
 
-    # --- 4) add subject specific information -------------------
-    # create tuple containing approx. birthday
-    date_of_record = raw.annotations.orig_time
-    # unix timestap to date
+    # number channels of type 'eeg' in dataset
+    n_eeg = len([chan for chan in channels if chan in montage_channels])
+
+    # create custom info for subj file
+    info_custom = create_info(channels, sfreq, types, montage)
+
+    # --- 4) compute approx. date of birth ---------------------
+    # get measurement date from dataset info
+    date_of_record = raw.info['meas_date'][0]
+    # convert to date format
     date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
-    # compute approx. date of birth
+
+    # here, we compute only and approximate of the subjects birthday
+    # this is to keep the date anonymous (at least to some degree)
     year_of_birth = int(date.split('-')[0]) - subj_demo.iloc[ind].age
     approx_birthday = (year_of_birth,
                        int(date[5:].split('-')[0]),
                        int(date[5:].split('-')[1]))
-    # add subject info to dataset info
+
+    # add modified subject info to dataset
     raw.info['subject_info'] = dict(id=int(subj),
                                     sex=subj_demo.iloc[ind].sex,
                                     birthday=approx_birthday)
 
-    # --- 4) events info ---------------------------------------
+    # --- 4) create events info --------------------------------
     # extract events
     events = find_events(raw,
                          stim_channel='Status',
@@ -127,7 +135,9 @@ for ind, file in enumerate(files):
                  'probe_2': 78,
                  'probe_3': 79,
                  'probe_4': 80,
-                 'probe_5': 81}
+                 'probe_5': 81,
+                 'start_record': 127,
+                 'pause_record': 245}
 
     # --- 5) export to bids ------------------------------------
     # file name compliant with bids
