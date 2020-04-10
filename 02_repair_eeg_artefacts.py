@@ -15,21 +15,22 @@ import matplotlib.cm as cm
 cmap = cm.get_cmap('inferno')
 
 import numpy as np
+import pandas as pd
 
-from mne import create_info
-from mne.io import read_raw_fif, RawArray
+from mne import pick_types, Annotations, open_report
+from mne.io import read_raw_fif
 
 from scipy.stats import median_absolute_deviation as mad
 from sklearn.preprocessing import normalize
 
 # All parameters are defined in config.py
-from config import fname, n_jobs, parser
+from config import fname, parser
 
 # Handle command line arguments
 args = parser.parse_args()
 subject = args.subject
 
-print('Converting subject %s to BIDS' % subject)
+print('Initialise artefact detection for subject %s' % subject)
 
 ###############################################################################
 # 1) Import the output from previous processing step
@@ -39,7 +40,7 @@ input_file = fname.output(subject=subject,
 raw = read_raw_fif(input_file, preload=True)
 
 ###############################################################################
-# 2)
+# 2) Compute robust average reference
 
 iterations = 0
 noisy = []
@@ -65,16 +66,17 @@ while True:
                                                                scale=1)
 
     # channels identified by deviation criterion
-    bad_dev = \
-        [raw_copy.ch_names[i] for i in np.where(robust_z_scores_dev > 5.0)[0]]
+    bad_deviation = \
+        [raw_copy.ch_names[i] for i in np.where(np.abs(robust_z_scores_dev) > 5.0)[0]]
 
-    noisy.extend(bad_dev)
+    noisy.extend(bad_deviation)
 
-    if (iterations > 1 and (not bad_dev or set(bad_dev) == set(noisy)) or
+    if (iterations > 1 and (not bad_deviation or set(bad_deviation) == set(noisy))
+            or
             iterations > max_iter):
         break
 
-    if bad_dev:
+    if bad_deviation:
         raw_copy = raw.copy()
         raw_copy.info['bads'] = list(set(noisy))
         raw_copy.interpolate_bads(mode='accurate')
@@ -83,12 +85,29 @@ while True:
     ref_signal = np.nanmean(eeg_signal, axis=0)
     eeg_temp = eeg_signal - ref_signal
 
-    print(bad_dev)
+    if bad_deviation:
+        print(bad_deviation)
+
     iterations = iterations + 1
 
+###############################################################################
+# 3) Find noisy channels
+
+# remove robust reference
+eeg_signal = raw.get_data(picks='eeg')
+eeg_temp = eeg_signal - ref_signal
+
+# mean absolute deviation (MAD) scores for each channel
+mad_scores = \
+    [mad(eeg_temp[i, :], scale=1) for i in range(eeg_temp.shape[0])]
+
+# compute robust z-scores for each channel
+robust_z_scores_dev = \
+    0.6745 * (mad_scores - np.nanmedian(mad_scores)) / mad(mad_scores,
+                                                           scale=1)
 # plot results
-z_colors = normalize(np.abs(robust_z_scores_dev).reshape((1,
-                                                          robust_z_scores_dev.shape[0]))).ravel()
+z_colors = \
+    normalize(np.abs(robust_z_scores_dev).reshape((1, robust_z_scores_dev.shape[0]))).ravel()  # noqa: E501
 
 props = dict(boxstyle='round', facecolor='white', alpha=0.5)
 fig, ax = plt.subplots(figsize=(5, 15))
@@ -105,66 +124,125 @@ ax.set_xlim(0, int(robust_z_scores_dev.max()+2))
 plt.title('EEG channel deviation')
 plt.xlabel('Abs. Z-Score')
 plt.ylabel('Channels')
-plt.show()
+plt.close(fig)
 
-raw_copy.info['bads'] = bads_by_dev
-raw_copy.interpolate_bads(mode='accurate')
+# interpolate channels identified by deviation criterion
+bad_channels = \
+    [raw.ch_names[i] for i in
+     np.where(np.abs(robust_z_scores_dev) > 5.0)[0]]
+raw.info['bads'] = bad_channels
+raw.interpolate_bads(mode='accurate')
+
+###############################################################################
+# 3) Reference eeg data to average of all eeg channels
+
+raw.set_eeg_reference(ref_channels='average', projection=True)
+
+###############################################################################
+# 4) Find distorted segments in data
+
+# channels to use in artefact detection procedure
+eeg_channels = pick_types(raw.info, eeg=True)
+
+# ignore fronto-polar channels
+ignored = [raw.ch_names.index(chan) for chan in raw.ch_names if
+           chan in {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}]
+picks = [channel for channel in eeg_channels if channel not in ignored]
+
+# use a copy of eeg data
+raw_copy = raw.copy()
+raw_copy.apply_proj()
+data = raw_copy.get_data(eeg_channels)
+
+# detect artifacts (i.e., absolute amplitude > 500 microV)
+times = []
+annotations_df = pd.DataFrame(times)
+onsets = []
+duration = []
+annotated_channels = []
+bad_chans = []
+
+# loop through samples
+for sample in range(0, data.shape[1]):
+    if len(times) > 0:
+        if sample <= (times[-1] + int(1 * raw_copy.info['sfreq'])):
+            continue
+    peak = []
+    for channel in picks:
+        peak.append(abs(data[channel][sample]))
+    if max(peak) >= 250e-6:
+        times.append(float(sample))
+        annotated_channels.append(raw_copy.ch_names[picks[int(np.argmax(peak))]])
+# if artifact found create annotations for raw data
+if len(times) > 0:
+    # get first time
+    first_time = raw_copy._first_time
+    # column names
+    annot_infos = ['onset', 'duration', 'description']
+
+    # save onsets
+    onsets = np.asarray(times)
+    # include one second before artifact onset
+    onsets = ((onsets / raw_copy.info['sfreq']) + first_time) - 1
+    # durations and labels
+    duration = np.repeat(2, len(onsets))
+    description = np.repeat('Bad', len(onsets))
+
+    # get annotations in data
+    artifacts = np.array((onsets, duration, description)).T
+    # to pandas data frame
+    artifacts = pd.DataFrame(artifacts,
+                             columns=annot_infos)
+    # annotations from data
+    annotations = pd.DataFrame(raw_copy.annotations)
+    annotations = annotations[annot_infos]
+
+    # merge artifacts and previous annotations
+    artifacts = artifacts.append(annotations, ignore_index=True)
+
+    # create new annotation info
+    annotations = Annotations(artifacts['onset'],
+                              artifacts['duration'],
+                              artifacts['description'],
+                              orig_time=raw_copy.annotations.orig_time)
+    # apply to raw data
+    raw.set_annotations(annotations)
+
+# save total annotated time
+total_time = sum(duration)
+# save frequency of annotation per channel
+frequency_of_annotation = {x: annotated_channels.count(x) * 2
+                           for x in annotated_channels}
+
+# create plot with clean data
+plot_artefacts = raw.plot(scalings=dict(eeg=50e-6, eog=50e-6),
+                          n_channels=len(raw.info['ch_names']),
+                          title='Robust reference applied Sub-%s' % subject,
+                          show=False)
 
 
+###############################################################################
+# 5) Export data to .fif for further processing
+# output path
+output_path = fname.output(processing_step='artefact_detection',
+                           subject=subject,
+                           file_type='raw.fif')
 
-def outliers_modified_z_score(ys):
-    threshold = 3.5
+# save file
+raw.save(output_path, overwrite=True)
 
-    median_y = np.median(ys)
-    median_absolute_deviation_y = np.median([np.abs(y - median_y) for y in ys])
-    modified_z_scores = [0.6745 * (y - median_y) / median_absolute_deviation_y
-                         for y in ys]
-    return np.where(np.abs(modified_z_scores) > threshold)
+###############################################################################
+# 6) Create HTML report
+bad_channels_identified = '<p>Channels_interpolated:.<br>'\
+                          '%s <p>' \
+                          % (', '.join([str(chan) for chan in bad_channels]))
 
-
-mad_scores_2 = [np.abs(eeg_signal[1, i] - np.nanmedian(eeg_signal[1, :])) for
-                       i in range(eeg_signal.shape[1])]
-
-chan_dev = [0.7413 * iqr(eeg_signal[i, :]) for i in range(eeg_signal.shape[0])]
-channel_deviationSD = 0.7413 * iqr(chan_dev)
-channel_deviationMedian = np.nanmedian(chan_dev)
-
-robust_channel_deviation = np.divide(np.subtract(chan_dev, channel_deviationMedian), channel_deviationSD)
-
-robust_z_scores_dev = (mad_scores - np.nanmedian(mad_scores)) / mad(mad_scores)
-
-# mask
-mask = [0] * eeg_signal.shape[0]
-
-# TEST
-ref_signal = ref_signal.reshape(1, ref_signal.shape[0])
-
-info = create_info(
-    ch_names=['REF'],
-    ch_types=['eeg'],
-    sfreq=raw_copy.info['sfreq'])
-
-custom_raw = RawArray(ref_signal, info)
-custom_raw.info['highpass'] = raw_copy.info['highpass']
-custom_raw.info['lowpass'] = raw_copy.info['lowpass']
-custom_raw.info['line_freq'] = raw_copy.info['line_freq']
-raw_copy.add_channels([custom_raw])
-
-# raw_temp = raw_copy()
-# sig_temp = raw_copy() - ref_signal
-#
-# while True
-#   detect bads in sig_temp
-#   if no bads
-#       break
-#   elif bads
-#       raw_temp = raw_copy()
-#       raw_temp[bads] = bads
-#       raw_temp intepolate bads
-#   else
-
-
-# mean = mean of raw after interpolateion of bads
-# raw_temp = raw_copy - mean
-
-
+with open_report(fname.report(subject=subject)[0]) as report:
+    report.add_htmls_to_section(htmls=bad_channels_identified,
+                                captions='Bad channels',
+                                section='Artefact detection')
+    report.add_figs_to_section(plot_artefacts, 'Clean data',
+                               section='Artefact detection',
+                               replace=True)
+    report.save(fname.report(subject=subject)[1], overwrite=True,
+                open_browser=False)
