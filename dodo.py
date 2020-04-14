@@ -64,7 +64,7 @@ def task_eeg_to_bids():
 # This task executes a single analysis script for each subject, giving
 # the subject as a command line parameter to the script.
 def task_task_blocks():
-    """Step 00: Bring data set into a BIDS compliant directory structure."""
+    """Step 01: Extracts task segments (drop pauses in between)."""
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
@@ -93,7 +93,7 @@ def task_task_blocks():
 # This task executes a single analysis script for each subject, giving
 # the subject as a command line parameter to the script.
 def task_artefact_detection():
-    """Step 00: Bring data set into a BIDS compliant directory structure."""
+    """Step 02: Detect and repair EEG artefacts."""
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
