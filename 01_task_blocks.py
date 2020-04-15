@@ -1,7 +1,7 @@
 """
-=============================================================
-Extract segments of the data recorded during task performance
-=============================================================
+====================================================================
+Extract segments of data that where recorded during task performance
+====================================================================
 
 Segments that were recorded during the self-paced breaks (in between
 experimental blocks) will be dropped.

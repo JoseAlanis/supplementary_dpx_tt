@@ -1,10 +1,9 @@
 """
-=============================================================
-Extract segments of the data recorded during task performance
-=============================================================
+===================
+Repair bad channels
+===================
 
-Segments that were recorded during the self-paced breaks (in between
-experimental blocks) will be dropped.
+Identify and interpolate bad (i.e., noisy) EEG channels.
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
