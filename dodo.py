@@ -68,8 +68,8 @@ def task_task_blocks():
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
-            # This task should come after `task_check`
-            task_dep=['check', 'eeg_to_bids'],
+            # This task should come after `eeg_to_bids`
+            task_dep=['eeg_to_bids'],
 
             # A name for the sub-task: set to the name of the subject
             name=subject,
@@ -97,8 +97,8 @@ def task_artefact_detection():
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
-            # This task should come after `task_check`
-            task_dep=['check', 'eeg_to_bids', 'task_blocks'],
+            # This task should come after `task_blocks`
+            task_dep=['task_blocks'],
 
             # A name for the sub-task: set to the name of the subject
             name=subject,
@@ -120,7 +120,37 @@ def task_artefact_detection():
         )
 
 
-#
+# This task executes a single analysis script for each subject, giving
+# the subject as a command line parameter to the script.
+def task_fit_ica():
+    """Step 03: Decompose EEG signal into independent components."""
+    # Run the script for each subject in a sub-task.
+    for subject in subjects:
+        yield dict(
+            # This task should come after `artefact_detection`
+            task_dep=['artefact_detection'],
+
+            # A name for the sub-task: set to the name of the subject
+            name=subject,
+
+            # If any of these files change, the script needs to be re-run. Make
+            # sure that the script itself is part of this list!
+            file_dep=[fname.source(subject=subject),
+                      '00_eeg_to_bids.py',
+                      '01_task_blocks.py',
+                      '02_repair_eeg_artefacts.py'],
+
+            # The files produced by the script
+            targets=[fname.output(processing_step='fit_ica',
+                                  subject=subject,
+                                  file_type='ica.fif')],
+
+            # How the script needs to be called. Here we indicate it should
+            # have one command line parameter: the name of the subject.
+            actions=['python 03_fit_ica.py %s' % subject]
+        )
+
+
 # # Here is another example task that averages across subjects.
 # def task_example_summary():
 #     """Step 01: Average across subjects."""
