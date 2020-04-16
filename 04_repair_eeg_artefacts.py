@@ -63,7 +63,7 @@ for eog in eogs:
                                                 reject_by_annotation=True)
 
     # if any "bad" components found:
-    if eog_indices and eog_indices not in ica.exclude:
+    if eog_indices and any(eog_indices) not in ica.exclude:
 
         for eog_i in eog_indices:
             # add component to list for exclusion
@@ -115,11 +115,12 @@ corrmap(icas=[template_ica_file, ica],
         template=(0, 4), threshold=0.9, label='blink_side', plot=False)
 
 # if new components were found add them to exclusion list
-if ica.labels_['blink_up'] and ica.labels_['blink_up'] not in ica.exclude:
+if ica.labels_['blink_up'] and any(ica.labels_['blink_up']) not in ica.exclude:
     for component_up in ica.labels_['blink_up']:
         ica.exclude.append(component_up)  # noqa
 
-if ica.labels_['blink_side'] and ica.labels_['blink_side'] not in ica.exclude:
+if ica.labels_['blink_side'] and any(ica.labels_['blink_side']) not in \
+        ica.exclude:
     for component_side in ica.labels_['blink_side']:
         ica.exclude.append(component_side)  # noqa
 
