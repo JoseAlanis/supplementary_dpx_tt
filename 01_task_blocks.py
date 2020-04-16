@@ -16,7 +16,7 @@ from mne.io import read_raw_fif
 from mne import events_from_annotations, concatenate_raws, open_report
 
 # All parameters are defined in config.py
-from config import fname, n_jobs, parser, LoggingFormat
+from config import fname, n_jobs, sampling_rate, parser, LoggingFormat
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -160,7 +160,8 @@ output_path = fname.output(processing_step='task_blocks',
                            subject=subject,
                            file_type='raw.fif')
 
-# save file
+# sample down and save file
+raw_bl_filt.resample(sfreq=sampling_rate)
 raw_bl_filt.save(output_path, overwrite=True)
 
 ###############################################################################
@@ -174,7 +175,7 @@ blocks_duration = '<p>Block 1 Duration from %s to %s seconds.<br>'\
 
 with open_report(fname.report(subject=subject)[0]) as report:
     report.add_htmls_to_section(htmls=blocks_duration,
-                                captions='Durations',
+                                captions='Block durations',
                                 section='Filtered data')
     report.add_figs_to_section(fig, 'Blocks PSD',
                                section='Filtered data',

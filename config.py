@@ -68,7 +68,7 @@ os.environ['OMP_NUM_THREADS'] = str(n_jobs)
 
 ###############################################################################
 # Relevant parameters for the analysis.
-sample_rate = 256.  # Hz
+sampling_rate = 256.0  # Hz
 task_name = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
