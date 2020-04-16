@@ -37,7 +37,7 @@ def task_check():
 # This task executes a single analysis script for each subject, giving
 # the subject as a command line parameter to the script.
 def task_eeg_to_bids():
-    """Step 00: Bring data set into a BIDS compliant directory structure."""
+    """Step 00: Put EEG data into a BIDS-compliant directory structure."""
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
@@ -92,8 +92,8 @@ def task_task_blocks():
 
 # This task executes a single analysis script for each subject, giving
 # the subject as a command line parameter to the script.
-def task_artefact_detection():
-    """Step 02: Detect and repair EEG artefacts."""
+def task_repair_bad_channels():
+    """Step 02: Identify and repair bad (i.e., noisy) EEG channels."""
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
@@ -110,13 +110,13 @@ def task_artefact_detection():
                       '01_task_blocks.py'],
 
             # The files produced by the script
-            targets=[fname.output(processing_step='artefact_detection',
+            targets=[fname.output(processing_step='repair_bads',
                                   subject=subject,
                                   file_type='raw.fif')],
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 02_repair_eeg_artefacts.py %s' % subject]
+            actions=['python 02_repair_bad_eeg_channels.py %s' % subject]
         )
 
 
@@ -127,8 +127,8 @@ def task_fit_ica():
     # Run the script for each subject in a sub-task.
     for subject in subjects:
         yield dict(
-            # This task should come after `artefact_detection`
-            task_dep=['artefact_detection'],
+            # This task should come after `repair_bad_channels`
+            task_dep=['repair_bad_channels'],
 
             # A name for the sub-task: set to the name of the subject
             name=subject,
@@ -138,7 +138,7 @@ def task_fit_ica():
             file_dep=[fname.source(subject=subject),
                       '00_eeg_to_bids.py',
                       '01_task_blocks.py',
-                      '02_repair_eeg_artefacts.py'],
+                      '02_repair_bad_eeg_channels.py'],
 
             # The files produced by the script
             targets=[fname.output(processing_step='fit_ica',
@@ -148,6 +148,36 @@ def task_fit_ica():
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
             actions=['python 03_fit_ica.py %s' % subject]
+        )
+
+
+def task_repair_artefacts():
+    """Step 04: Repair EEG artefacts caused by ocular movements."""
+    # Run the script for each subject in a sub-task.
+    for subject in subjects:
+        yield dict(
+            # This task should come after `fit_ica`
+            task_dep=['fit_ica'],
+
+            # A name for the sub-task: set to the name of the subject
+            name=subject,
+
+            # If any of these files change, the script needs to be re-run. Make
+            # sure that the script itself is part of this list!
+            file_dep=[fname.source(subject=subject),
+                      '00_eeg_to_bids.py',
+                      '01_task_blocks.py',
+                      '02_repair_bad_eeg_channels.py',
+                      '03_fit_ica.py'],
+
+            # The files produced by the script
+            targets=[fname.output(processing_step='repaired_with_ica',
+                                  subject=subject,
+                                  file_type='raw.fif')],
+
+            # How the script needs to be called. Here we indicate it should
+            # have one command line parameter: the name of the subject.
+            actions=['python 04_repair_eeg_artefacts.py %s' % subject]
         )
 
 

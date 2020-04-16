@@ -1,7 +1,9 @@
 """
-========================================================
-Bring data set into a BIDS compliant directory structure
-========================================================
+====================
+EEG data set to BIDS
+====================
+
+Put EEG data into a BIDS-compliant directory structure.
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
@@ -68,7 +70,6 @@ raw.set_montage(montage)
 date_of_record = raw.info['meas_date']
 # convert to date format
 date = date_of_record.strftime('%Y-%m-%d')
-# date = datetime.utcfromtimestamp(date_of_record).strftime('%Y-%m-%d')
 
 # here, we compute only and approximate of the subjects birthday
 # this is to keep the date anonymous (at least to some degree)

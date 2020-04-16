@@ -12,25 +12,29 @@ from mne.io import read_raw_fif
 from mne.preprocessing import ICA
 
 # All parameters are defined in config.py
-from config import fname, parser
+from config import fname, parser, LoggingFormat
 
 # Handle command line arguments
 args = parser.parse_args()
 subject = args.subject
 
-print('Run ICA for subject %s' % subject)
+print(LoggingFormat.PURPLE +
+      LoggingFormat.BOLD +
+      'Fit ICA for subject %s' % subject +
+      LoggingFormat.END)
 
 ###############################################################################
 # 1) Import the output from previous processing step
 input_file = fname.output(subject=subject,
-                          processing_step='artefact_detection',
+                          processing_step='repair_bads',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
 
 ###############################################################################
 #  2) Activate average reference and set ICA parameters
-raw_copy = raw.copy()
-raw_copy.apply_proj()
+# raw_copy = raw.copy()
+# raw_copy.apply_proj()
+raw.info['projs'] = []
 
 # ICA parameters
 n_components = 15
@@ -40,8 +44,7 @@ reject = dict(eeg=300e-6)
 # Pick electrodes to use
 picks = pick_types(raw.info,
                    eeg=True,
-                   eog=False,
-                   stim=False)
+                   eog=False)
 
 ###############################################################################
 #  2) Fit ICA
@@ -50,7 +53,7 @@ ica = ICA(n_components=n_components,
           fit_params=dict(ortho=False,
                           extended=True))
 
-ica.fit(raw_copy.filter(l_freq=1., h_freq=None),
+ica.fit(raw.copy().filter(l_freq=1.0, h_freq=None),
         picks=picks,
         reject=reject,
         reject_by_annotation=True)

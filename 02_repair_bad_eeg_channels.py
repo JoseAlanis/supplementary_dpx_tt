@@ -1,10 +1,9 @@
 """
-=============================================================
-Extract segments of the data recorded during task performance
-=============================================================
+===================
+Repair bad channels
+===================
 
-Segments that were recorded during the self-paced breaks (in between
-experimental blocks) will be dropped.
+Identify and interpolate bad (i.e., noisy) EEG channels.
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
@@ -12,25 +11,28 @@ License: BSD (3-clause)
 """
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-cmap = cm.get_cmap('inferno')
+cmap = cm.get_cmap('inferno')  # noqa
 
 import numpy as np
 import pandas as pd
 
-from mne import pick_types, Annotations, open_report
+from mne import Annotations, open_report
 from mne.io import read_raw_fif
 
 from scipy.stats import median_absolute_deviation as mad
 from sklearn.preprocessing import normalize
 
 # All parameters are defined in config.py
-from config import fname, parser
+from config import fname, parser, LoggingFormat
 
 # Handle command line arguments
 args = parser.parse_args()
 subject = args.subject
 
-print('Initialise artefact detection for subject %s' % subject)
+print(LoggingFormat.PURPLE +
+      LoggingFormat.BOLD +
+      'Initialise bad channel detection for subject %s' % subject +
+      LoggingFormat.END)
 
 ###############################################################################
 # 1) Import the output from previous processing step
@@ -41,7 +43,6 @@ raw = read_raw_fif(input_file, preload=True)
 
 ###############################################################################
 # 2) Compute robust average reference
-
 iterations = 0
 noisy = []
 max_iter = 4
@@ -67,13 +68,13 @@ while True:
 
     # channels identified by deviation criterion
     bad_deviation = \
-        [raw_copy.ch_names[i] for i in np.where(np.abs(robust_z_scores_dev) > 5.0)[0]]
+        [raw_copy.ch_names[i] for i in np.where(np.abs(robust_z_scores_dev)
+                                                > 5.0)[0]]
 
     noisy.extend(bad_deviation)
 
-    if (iterations > 1 and (not bad_deviation or set(bad_deviation) == set(noisy))
-            or
-            iterations > max_iter):
+    if (iterations > 1 and (not bad_deviation or set(bad_deviation) == set(
+            noisy)) or iterations > max_iter):
         break
 
     if bad_deviation:
@@ -92,7 +93,6 @@ while True:
 
 ###############################################################################
 # 3) Find noisy channels
-
 # remove robust reference
 eeg_signal = raw.get_data(picks='eeg')
 eeg_temp = eeg_signal - ref_signal
@@ -106,8 +106,7 @@ robust_z_scores_dev = \
     0.6745 * (mad_scores - np.nanmedian(mad_scores)) / mad(mad_scores,
                                                            scale=1)
 # plot results
-z_colors = \
-    normalize(np.abs(robust_z_scores_dev).reshape((1, robust_z_scores_dev.shape[0]))).ravel()  # noqa: E501
+z_colors = normalize(np.abs(robust_z_scores_dev).reshape((1, robust_z_scores_dev.shape[0]))).ravel()  # noqa: E501
 
 props = dict(boxstyle='round', facecolor='white', alpha=0.5)
 fig, ax = plt.subplots(figsize=(5, 15))
@@ -127,27 +126,24 @@ plt.ylabel('Channels')
 plt.close(fig)
 
 # interpolate channels identified by deviation criterion
-bad_channels = \
-    [raw.ch_names[i] for i in
-     np.where(np.abs(robust_z_scores_dev) > 5.0)[0]]
+bad_channels = [raw.ch_names[i] for i in np.where(np.abs(
+    robust_z_scores_dev) > 5.0)[0]]
 raw.info['bads'] = bad_channels
 raw.interpolate_bads(mode='accurate')
 
 ###############################################################################
 # 3) Reference eeg data to average of all eeg channels
-
 raw.set_eeg_reference(ref_channels='average', projection=True)
 
 ###############################################################################
 # 4) Find distorted segments in data
-
 # channels to use in artefact detection procedure
-eeg_channels = pick_types(raw.info, eeg=True)
+eeg_channels = raw.copy().pick_types(eeg=True).ch_names
 
 # ignore fronto-polar channels
-ignored = [raw.ch_names.index(chan) for chan in raw.ch_names if
-           chan in {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}]
-picks = [channel for channel in eeg_channels if channel not in ignored]
+picks = [raw.ch_names.index(channel)
+         for channel in eeg_channels if channel not in
+         {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}]
 
 # use a copy of eeg data
 raw_copy = raw.copy()
@@ -172,11 +168,12 @@ for sample in range(0, data.shape[1]):
         peak.append(abs(data[channel][sample]))
     if max(peak) >= 250e-6:
         times.append(float(sample))
-        annotated_channels.append(raw_copy.ch_names[picks[int(np.argmax(peak))]])
+        annotated_channels.append(raw_copy.ch_names[picks[int(np.argmax(
+            peak))]])
 # if artifact found create annotations for raw data
 if len(times) > 0:
     # get first time
-    first_time = raw_copy._first_time
+    first_time = raw_copy.first_time
     # column names
     annot_infos = ['onset', 'duration', 'description']
 
@@ -220,11 +217,10 @@ plot_artefacts = raw.plot(scalings=dict(eeg=50e-6, eog=50e-6),
                           title='Robust reference applied Sub-%s' % subject,
                           show=False)
 
-
 ###############################################################################
 # 5) Export data to .fif for further processing
 # output path
-output_path = fname.output(processing_step='artefact_detection',
+output_path = fname.output(processing_step='repair_bads',
                            subject=subject,
                            file_type='raw.fif')
 
@@ -240,12 +236,12 @@ bad_channels_identified = '<p>Channels_interpolated:.<br>'\
 with open_report(fname.report(subject=subject)[0]) as report:
     report.add_htmls_to_section(htmls=bad_channels_identified,
                                 captions='Bad channels',
-                                section='Artefact detection')
+                                section='Bad channel detection')
     report.add_figs_to_section(fig, 'Robust Z-Scores',
-                               section='Artefact detection',
+                               section='Bad channel detection',
                                replace=True)
     report.add_figs_to_section(plot_artefacts, 'Clean data',
-                               section='Artefact detection',
+                               section='Bad channel detection',
                                replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)
