@@ -110,9 +110,9 @@ template_ica_file = read_ica(template_ica_file)
 
 # compute correlations with template
 corrmap(icas=[template_ica_file, ica],
-        template=(0, 0), threshold=0.9, label='blink_up')
+        template=(0, 0), threshold=0.9, label='blink_up', plot=False)
 corrmap(icas=[template_ica_file, ica],
-        template=(0, 4), threshold=0.9, label='blink_side')
+        template=(0, 4), threshold=0.9, label='blink_side', plot=False)
 
 # if new components were found add them to exclusion list
 if ica.labels_['blink_up'] and ica.labels_['blink_up'] not in ica.exclude:
@@ -126,7 +126,7 @@ if ica.labels_['blink_side'] and ica.labels_['blink_side'] not in ica.exclude:
 ###############################################################################
 # 5) Remove bad components
 # summary plot
-sorces_plot = ica.plot_sources(raw, show=False)
+sources_plot = ica.plot_sources(raw, show=False)
 
 # apply ica weights to data
 ica.apply(raw)
@@ -144,7 +144,7 @@ raw.save(output_path, overwrite=True)
 ###############################################################################
 # 7) Create HTML report
 with open_report(fname.report(subject=subject)[0]) as report:
-    report.add_figs_to_section(sorces_plot, 'Bad component sources',
+    report.add_figs_to_section(sources_plot, 'Bad component sources',
                                section='ICA',
                                replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
