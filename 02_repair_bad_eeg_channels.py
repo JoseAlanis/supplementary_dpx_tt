@@ -16,7 +16,7 @@ cmap = cm.get_cmap('inferno')  # noqa
 import numpy as np
 import pandas as pd
 
-from mne import pick_types, Annotations, open_report
+from mne import Annotations, open_report
 from mne.io import read_raw_fif
 
 from scipy.stats import median_absolute_deviation as mad
@@ -138,12 +138,12 @@ raw.set_eeg_reference(ref_channels='average', projection=True)
 ###############################################################################
 # 4) Find distorted segments in data
 # channels to use in artefact detection procedure
-eeg_channels = pick_types(raw.info, eeg=True)
+eeg_channels = raw.copy().pick_types(eeg=True).ch_names
 
 # ignore fronto-polar channels
-ignored = [raw.ch_names.index(chan) for chan in raw.ch_names if
-           chan in {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}]
-picks = [channel for channel in list(eeg_channels) if channel not in ignored]
+picks = [raw.ch_names.index(channel)
+         for channel in eeg_channels if channel not in
+         {'Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'AFz', 'AF4', 'AF8'}]
 
 # use a copy of eeg data
 raw_copy = raw.copy()
@@ -173,7 +173,7 @@ for sample in range(0, data.shape[1]):
 # if artifact found create annotations for raw data
 if len(times) > 0:
     # get first time
-    first_time = raw_copy._first_time
+    first_time = raw_copy.first_time
     # column names
     annot_infos = ['onset', 'duration', 'description']
 

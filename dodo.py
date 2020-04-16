@@ -151,34 +151,34 @@ def task_fit_ica():
         )
 
 
-# def task_repair_artefacts():
-#     """Step 04: Repair EEG artefacts caused by ocular movements."""
-#     # Run the script for each subject in a sub-task.
-#     for subject in subjects:
-#         yield dict(
-#             # This task should come after `fit_ica`
-#             task_dep=['fit_ica'],
-#
-#             # A name for the sub-task: set to the name of the subject
-#             name=subject,
-#
-#             # If any of these files change, the script needs to be re-run. Make
-#             # sure that the script itself is part of this list!
-#             file_dep=[fname.source(subject=subject),
-#                       '00_eeg_to_bids.py',
-#                       '01_task_blocks.py',
-#                       '02_repair_bad_eeg_channels.py',
-#                       '03_fit_ica.py'],
-#
-#             # The files produced by the script
-#             targets=[fname.output(processing_step='repaired_ica',
-#                                   subject=subject,
-#                                   file_type='ica.fif')],
-#
-#             # How the script needs to be called. Here we indicate it should
-#             # have one command line parameter: the name of the subject.
-#             actions=['python 04_repair_eeg_artefacts.py %s' % subject]
-#         )
+def task_repair_artefacts():
+    """Step 04: Repair EEG artefacts caused by ocular movements."""
+    # Run the script for each subject in a sub-task.
+    for subject in subjects:
+        yield dict(
+            # This task should come after `fit_ica`
+            task_dep=['fit_ica'],
+
+            # A name for the sub-task: set to the name of the subject
+            name=subject,
+
+            # If any of these files change, the script needs to be re-run. Make
+            # sure that the script itself is part of this list!
+            file_dep=[fname.source(subject=subject),
+                      '00_eeg_to_bids.py',
+                      '01_task_blocks.py',
+                      '02_repair_bad_eeg_channels.py',
+                      '03_fit_ica.py'],
+
+            # The files produced by the script
+            targets=[fname.output(processing_step='repaired_with_ica',
+                                  subject=subject,
+                                  file_type='raw.fif')],
+
+            # How the script needs to be called. Here we indicate it should
+            # have one command line parameter: the name of the subject.
+            actions=['python 04_repair_eeg_artefacts.py %s' % subject]
+        )
 
 
 # # Here is another example task that averages across subjects.

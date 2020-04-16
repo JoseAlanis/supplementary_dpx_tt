@@ -12,14 +12,12 @@ License: BSD (3-clause)
 """
 import matplotlib.pyplot as plt
 
-import numpy as np
-
-from mne import pick_types, open_report
+from mne import open_report
 from mne.io import read_raw_fif
-from mne.preprocessing import read_ica, create_eog_epochs
+from mne.preprocessing import read_ica, create_eog_epochs, corrmap
 
 # All parameters are defined in config.py
-from config import subjects, fname, parser, LoggingFormat
+from config import fname, parser, LoggingFormat
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -46,50 +44,108 @@ ica = read_ica(ica_file)
 
 ###############################################################################
 # 3) Find blink components via correlation with EOG-channels
-# get eogs indices and names
-eogs = pick_types(raw.info, eog=True)
-eog_names = [raw.ch_names[ch] for ch in eogs]
+# get EOG-channel names
+eogs = raw.copy().pick_types(eog=True).ch_names
 
-# place holder for blink components
-blink_components = []
-
-for n, eog in enumerate(eog_names):
+for eog in eogs:
     eog_epochs = create_eog_epochs(raw,
                                    ch_name=eog,
                                    reject_by_annotation=True)
+
+    # create average blink
+    eog_evoked = eog_epochs.average()
+    eog_evoked.apply_baseline(baseline=(None, -0.2))
 
     # find components that correlate with activity recorded at eog
     # channel in question
     eog_indices, eog_scores = ica.find_bads_eog(eog_epochs,
                                                 ch_name=eog,
                                                 reject_by_annotation=True)
-    # if
-    if eog_indices and eog_indices not in blink_components:
+
+    # if any "bad" components found:
+    if eog_indices and eog_indices not in ica.exclude:
+
         for eog_i in eog_indices:
+            # add component to list for exclusion
+            ica.exclude.append(eog_i)  # noqa
+
+            # create summary plots
             fig = ica.plot_properties(eog_epochs,
                                       picks=eog_i,
                                       psd_args={'fmax': 35.},
                                       image_args={'sigma': 1.})[0]
             plt.close(fig)
-            # 5) Create HTML report
+            fig_evoked = ica.plot_sources(eog_evoked)
+            plt.close(fig_evoked)
+
+            # create HTML report
             with open_report(fname.report(subject=subject)[0]) as report:
                 report.add_figs_to_section(fig, 'Bad components identified '
                                                 'by %s electrode' % eog,
                                            section='ICA',
                                            replace=True)
+                report.add_figs_to_section(fig_evoked, 'Components sources as '
+                                                       'identified '
+                                                       'by %s electrode' % eog,
+                                           section='ICA',
+                                           replace=True)
                 report.save(fname.report(subject=subject)[1], overwrite=True,
                             open_browser=False)
 
-    # component maps to use as templates for ocular artefacts
-    blink_components.extend(eog_indices)
+###############################################################################
+# 4) Find any further components via correlation with template ICA
+# (just in case previous step missed any bad components)
+
+# load template file
+template_raw_file = fname.output(subject=3,
+                                 processing_step='repair_bads',
+                                 file_type='raw.fif')
+template_raw = read_raw_fif(template_raw_file)
+
+# and template ICA
+template_ica_file = fname.output(subject=3,
+                                 processing_step='fit_ica',
+                                 file_type='ica.fif')
+template_ica_file = read_ica(template_ica_file)
+
+# compute correlations with template
+corrmap(icas=[template_ica_file, ica],
+        template=(0, 0), threshold=0.9, label='blink_up')
+corrmap(icas=[template_ica_file, ica],
+        template=(0, 4), threshold=0.9, label='blink_side')
+
+# if new components were found add them to exclusion list
+if ica.labels_['blink_up'] and ica.labels_['blink_up'] not in ica.exclude:
+    for component_up in ica.labels_['blink_up']:
+        ica.exclude.append(component_up)  # noqa
+
+if ica.labels_['blink_side'] and ica.labels_['blink_side'] not in ica.exclude:
+    for component_side in ica.labels_['blink_side']:
+        ica.exclude.append(component_side)  # noqa
 
 ###############################################################################
-# 4) Remove components identified as bad
-ica.exclude = np.unique(blink_components)
+# 5) Remove bad components
+# summary plot
+sorces_plot = ica.plot_sources(raw, show=False)
 
-# check if any others should be removed
-ica.plot_sources(raw)
-
-# apply ica weights to raw data
+# apply ica weights to data
 ica.apply(raw)
 
+###############################################################################
+# 6) Save repaired data set
+# output path
+output_path = fname.output(processing_step='repaired_with_ica',
+                           subject=subject,
+                           file_type='raw.fif')
+
+# save file
+raw.save(output_path, overwrite=True)
+
+###############################################################################
+# 7) Create HTML report
+with open_report(fname.report(subject=subject)[0]) as report:
+    report.add_figs_to_section(sorces_plot, 'Bad component sources',
+                               section='ICA',
+                               replace=True)
+    report.save(fname.report(subject=subject)[1], overwrite=True,
+                open_browser=False)
