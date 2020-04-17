@@ -12,7 +12,7 @@ from mne.io import read_raw_fif
 from mne.preprocessing import ICA
 
 # All parameters are defined in config.py
-from config import fname, parser, LoggingFormat
+from config import fname, parser, LoggingFormat, n_jobs
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -53,7 +53,7 @@ ica = ICA(n_components=n_components,
           fit_params=dict(ortho=False,
                           extended=True))
 
-ica.fit(raw.copy().filter(l_freq=1.0, h_freq=None),
+ica.fit(raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs),
         picks=picks,
         reject=reject,
         reject_by_annotation=True)
