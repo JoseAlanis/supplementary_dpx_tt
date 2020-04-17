@@ -73,9 +73,10 @@ for eog in eogs:
             fig = ica.plot_properties(eog_epochs,
                                       picks=eog_i,
                                       psd_args={'fmax': 35.},
-                                      image_args={'sigma': 1.})[0]
+                                      image_args={'sigma': 1.},
+                                      show=False)[0]
             plt.close(fig)
-            fig_evoked = ica.plot_sources(eog_evoked)
+            fig_evoked = ica.plot_sources(eog_evoked, show=False)
             plt.close(fig_evoked)
 
             # create HTML report
