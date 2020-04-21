@@ -47,13 +47,71 @@ iterations = 0
 noisy = []
 max_iter = 4
 
-raw_copy = raw.copy()
+raw_copy = raw.copy().pick_types(eeg=True)
 # eeg signal
 eeg_signal = raw.get_data(picks='eeg')
 # get robust estimate of central tendency (i.e., the median)
 ref_signal = np.nanmedian(eeg_signal, axis=0)
 
 eeg_temp = eeg_signal - ref_signal
+
+# Based on the data, determine how many windows we need
+# and how large they should be
+corr_thresh=0.4
+fraction_bad=0.1
+corr_window_secs=1.0
+
+correlation_frames = corr_window_secs * raw_copy.info['sfreq']
+correlation_window = np.arange(0, correlation_frames)
+n = correlation_window.shape[0]
+correlation_offsets = np.arange(
+    0, (len(raw_copy.times) - correlation_frames), correlation_frames)
+w_correlation = correlation_offsets.shape[0]
+
+# preallocate
+channel_correlations = np.ones((w_correlation, len(raw_copy.ch_names)))
+
+# Cut the data indo windows
+x_bp_window = eeg_temp[: len(raw_copy.ch_names), : n * w_correlation]
+x_bp_window = x_bp_window.reshape(len(raw_copy.ch_names), n, w_correlation)
+
+# Perform Pearson correlations across channels per window
+# For each channel, take the absolute of the 98th percentile of
+# correlations with the other channels as a measure of how well
+# correlated that channel is with the others.
+for k in range(w_correlation):
+    eeg_portion = x_bp_window[:, :, k]
+    window_correlation = np.corrcoef(eeg_portion)
+    abs_corr = np.abs(
+        (window_correlation - np.diag(np.diag(window_correlation)))
+    )
+    channel_correlations[k, :] = np.percentile(abs_corr, 98, axis=0)
+
+# Perform thresholding to see which channels correlate badly with the
+# other channels in a certain fraction of windows (bad_time_threshold)
+thresholded_correlations = channel_correlations < corr_thresh
+frac_bad_corr_windows = np.mean(thresholded_correlations, axis=0)
+
+# find the corresponding channel names and return
+bad_idxs_bool = frac_bad_corr_windows > fraction_bad
+bad_idxs = np.argwhere(bad_idxs_bool)
+bads = [raw_copy.ch_names[int(bad)] for bad in bad_idxs]
+
+flat_thresh = 1
+std_thresh = 1
+bad_by_mad = mad(raw.get_data(picks='eog') * 1e6, scale=1, axis=1) < flat_thresh
+bad_by_std = np.std(raw_copy.get_data() * 1e6, axis=1) < std_thresh
+bad_idxs = np.argwhere(np.logical_or(bad_by_mad, bad_by_std))
+bads = raw_copy.ch_names[bad_idxs.astype(int)]
+# bads = [i[0] for i in bads]
+# bads.sort()
+# self.bad_by_flat = bads
+
+
+
+
+
+
 
 while True:
     # find bad channels by deviation (high variability in amplitude)
