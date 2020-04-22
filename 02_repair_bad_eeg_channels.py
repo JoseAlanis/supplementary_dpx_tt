@@ -24,7 +24,7 @@ from sklearn.preprocessing import normalize
 
 # All parameters are defined in config.py
 from config import fname, parser, LoggingFormat
-from bads import find_flat_channels
+from bads import find_bad_channels
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -42,117 +42,26 @@ input_file = fname.output(subject=subject,
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
 
-# create a copy of the data
-raw_copy = raw.copy()
+###############################################################################
+# 2) Check if there are any flat EOG channels
+flat_eogs = find_bad_channels(raw, picks='eog', method='flat')['flat']
+
+# remove flat eog channels from data
+raw.drop_channels(flat_eogs)
 
 ###############################################################################
-
-
-
-###############################################################################
-# 2) Compute robust average reference
-iterations = 0
-noisy = []
-max_iter = 4
-
-raw_copy = raw.copy().pick_types(eeg=True)
-# eeg signal
-eeg_signal = raw.get_data(picks='eeg')
-# get robust estimate of central tendency (i.e., the median)
-ref_signal = np.nanmedian(eeg_signal, axis=0)
-
-eeg_temp = eeg_signal - ref_signal
-
-# Based on the data, determine how many windows we need
-# and how large they should be
-corr_thresh=0.4
-fraction_bad=0.1
-corr_window_secs=1.0
-
-correlation_frames = corr_window_secs * raw_copy.info['sfreq']
-correlation_window = np.arange(0, correlation_frames)
-n = correlation_window.shape[0]
-correlation_offsets = np.arange(
-    0, (len(raw_copy.times) - correlation_frames), correlation_frames)
-w_correlation = correlation_offsets.shape[0]
-
-# preallocate
-channel_correlations = np.ones((w_correlation, len(raw_copy.ch_names)))
-
-# Cut the data indo windows
-x_bp_window = eeg_temp[: len(raw_copy.ch_names), : n * w_correlation]
-x_bp_window = x_bp_window.reshape(len(raw_copy.ch_names), n, w_correlation)
-
-# Perform Pearson correlations across channels per window
-# For each channel, take the absolute of the 98th percentile of
-# correlations with the other channels as a measure of how well
-# correlated that channel is with the others.
-for k in range(w_correlation):
-    eeg_portion = x_bp_window[:, :, k]
-    window_correlation = np.corrcoef(eeg_portion)
-    abs_corr = np.abs(
-        (window_correlation - np.diag(np.diag(window_correlation)))
-    )
-    channel_correlations[k, :] = np.percentile(abs_corr, 98, axis=0)
-
-# Perform thresholding to see which channels correlate badly with the
-# other channels in a certain fraction of windows (bad_time_threshold)
-thresholded_correlations = channel_correlations < corr_thresh
-frac_bad_corr_windows = np.mean(thresholded_correlations, axis=0)
-
-# find the corresponding channel names and return
-bad_idxs_bool = frac_bad_corr_windows > fraction_bad
-bad_idxs = np.argwhere(bad_idxs_bool)
-bads = [raw_copy.ch_names[int(bad)] for bad in bad_idxs]
-
-
-
-
-
-
-
-
-
-while True:
-    # find bad channels by deviation (high variability in amplitude)
-    # mean absolute deviation (MAD) scores for each channel
-    mad_scores = \
-        [mad(eeg_temp[i, :], scale=1) for i in range(eeg_temp.shape[0])]
-
-    # compute robust z-scores for each channel
-    robust_z_scores_dev = \
-        0.6745 * (mad_scores - np.nanmedian(mad_scores)) / mad(mad_scores,
-                                                               scale=1)
-
-    # channels identified by deviation criterion
-    bad_deviation = \
-        [raw_copy.ch_names[i] for i in np.where(np.abs(robust_z_scores_dev)
-                                                > 5.0)[0]]
-
-    noisy.extend(bad_deviation)
-
-    if (iterations > 1 and (not bad_deviation or set(bad_deviation) == set(
-            noisy)) or iterations > max_iter):
-        break
-
-    if bad_deviation:
-        raw_copy = raw.copy()
-        raw_copy.info['bads'] = list(set(noisy))
-        raw_copy.interpolate_bads(mode='accurate')
-
-    eeg_signal = raw_copy.get_data(picks='eeg')
-    ref_signal = np.nanmean(eeg_signal, axis=0)
-    eeg_temp = eeg_signal - ref_signal
-
-    if bad_deviation:
-        print(bad_deviation)
-
-    iterations = iterations + 1
+# 3) Compute robust average reference
+ref_signal = find_bad_channels(raw,
+                               picks='eeg',
+                               method='deviation',
+                               return_ref=True)['robust_reference']
 
 ###############################################################################
-# 3) Find noisy channels
+# 4) Find noisy channels
 # remove robust reference
 eeg_signal = raw.get_data(picks='eeg')
+eeg_signal -= ref_signal
+
 eeg_temp = eeg_signal - ref_signal
 
 # mean absolute deviation (MAD) scores for each channel
