@@ -24,6 +24,7 @@ from sklearn.preprocessing import normalize
 
 # All parameters are defined in config.py
 from config import fname, parser, LoggingFormat
+from bads import find_flat_channels
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -40,6 +41,13 @@ input_file = fname.output(subject=subject,
                           processing_step='task_blocks',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
+
+# create a copy of the data
+raw_copy = raw.copy()
+
+###############################################################################
+
+
 
 ###############################################################################
 # 2) Compute robust average reference
@@ -97,15 +105,7 @@ bad_idxs_bool = frac_bad_corr_windows > fraction_bad
 bad_idxs = np.argwhere(bad_idxs_bool)
 bads = [raw_copy.ch_names[int(bad)] for bad in bad_idxs]
 
-flat_thresh = 1
-std_thresh = 1
-bad_by_mad = mad(raw.get_data(picks='eog') * 1e6, scale=1, axis=1) < flat_thresh
-bad_by_std = np.std(raw_copy.get_data() * 1e6, axis=1) < std_thresh
-bad_idxs = np.argwhere(np.logical_or(bad_by_mad, bad_by_std))
-bads = raw_copy.ch_names[bad_idxs.astype(int)]
-# bads = [i[0] for i in bads]
-# bads.sort()
-# self.bad_by_flat = bads
+
 
 
 
