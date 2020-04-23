@@ -19,11 +19,10 @@ import pandas as pd
 from mne import Annotations, open_report
 from mne.io import read_raw_fif
 
-from scipy.stats import median_absolute_deviation as mad
 from sklearn.preprocessing import normalize
 
 # All parameters are defined in config.py
-from config import fname, parser, LoggingFormat
+from config import fname, parser, sampling_rate, LoggingFormat
 from bads import find_bad_channels
 
 # Handle command line arguments
@@ -50,52 +49,115 @@ flat_eogs = find_bad_channels(raw, picks='eog', method='flat')['flat']
 raw.drop_channels(flat_eogs)
 
 ###############################################################################
-# 3) Compute robust average reference
-ref_signal = find_bad_channels(raw,
-                               picks='eeg',
-                               method='deviation',
-                               return_ref=True)['robust_reference']
+# 3) Find noisy channels and compute robust average reference
+sfreq = sampling_rate
+channels = raw.copy().pick_types(eeg=True).ch_names
 
-###############################################################################
-# 4) Find noisy channels
-# remove robust reference
+# extract eeg signal
 eeg_signal = raw.get_data(picks='eeg')
-eeg_signal -= ref_signal
 
+# reference signal to robust estimate of central tendency
+ref_signal = np.nanmedian(eeg_signal, axis=0)
 eeg_temp = eeg_signal - ref_signal
 
-# mean absolute deviation (MAD) scores for each channel
-mad_scores = \
-    [mad(eeg_temp[i, :], scale=1) for i in range(eeg_temp.shape[0])]
+i = 0
+noisy = []
+while True:
 
-# compute robust z-scores for each channel
-robust_z_scores_dev = \
-    0.6745 * (mad_scores - np.nanmedian(mad_scores)) / mad(mad_scores,
-                                                           scale=1)
+    # find bad channels by deviation (high variability in amplitude)
+    bad_dev = find_bad_channels(eeg_temp,
+                                channels=channels,
+                                method='deviation')['deviation']
+
+    # find channels that don't well with other channels
+    bad_corr = find_bad_channels(eeg_temp,
+                                 channels=channels,
+                                 sfreq=sfreq,
+                                 r_threshold=0.3,
+                                 percent_threshold=0.5,
+                                 method='correlation')['correlation']
+
+    # only keep unique values
+    bads = set(bad_dev) | set(bad_corr)
+
+    # break if no (more) bad channels found
+    if i > 0 and (len(bads) == 0 or bads == set(noisy)) or i > 4:
+        break
+
+    # save identified channels as noisy
+    noisy.extend(bads)
+
+    # interpolate noisy channels
+    raw_copy = raw.copy()
+    raw_copy.info['bads'] = noisy
+    raw_copy.interpolate_bads(mode='accurate')
+
+    # redo with newly referenced "clean" signal
+    eeg_signal = raw_copy.get_data(picks='eeg')
+    ref_signal = np.nanmean(eeg_signal, axis=0)
+    eeg_temp = eeg_signal - ref_signal
+
+    print(noisy)
+
+    i = i + 1
+
+###############################################################################
+# 4) Compute robust average reference for EEG data
+# remove robust reference
+eeg_signal = raw.get_data(picks='eeg')
+eeg_temp -= ref_signal
+
+# re-reference eeg-signal using the reference computed in
+# "clean" reference computed above
+eeg_temp = eeg_signal - ref_signal
+
+# bad by (un)correlation
+bad_corr = find_bad_channels(eeg_temp,
+                             channels=channels,
+                             sfreq=sfreq,
+                             r_threshold=0.3,
+                             percent_threshold=0.5,
+                             method='correlation')['correlation']
+
+# bad by deviation
+bad_dev = find_bad_channels(eeg_temp,
+                            channels=channels,
+                            method='deviation',
+                            return_z_scores=True)
+
+z_scores = bad_dev['deviation_z_scores']
+bad_dev = bad_dev['deviation']
+
+# only keep unique values
+bad_channels = set(bad_dev) | set(bad_corr)
+
 # plot results
-z_colors = normalize(np.abs(robust_z_scores_dev).reshape((1, robust_z_scores_dev.shape[0]))).ravel()  # noqa: E501
+z_colors = normalize(np.abs(z_scores).reshape((1, z_scores.shape[0]))).ravel()  # noqa: E501
 
 props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-fig, ax = plt.subplots(figsize=(5, 15))
-for i in range(robust_z_scores_dev.shape[0]):
-    ax.axvline(x=5.0, ymin=-5.0, ymax=5.0,
-               color='crimson', linestyle='dotted', linewidth=.8)
-    ax.text(5.0, -2.0, 'crit. Z-score',  fontsize=14,
+fig, ax = plt.subplots(figsize=(20, 6))
+for i in range(z_scores.shape[0]):
+    ax.axhline(y=5.0, xmin=-1.0, xmax=65,
+               color='crimson', linestyle='dashed', linewidth=2.0)
+    ax.text(-5.0, 5.0, 'crit. Z-score',  fontsize=14,
             verticalalignment='center', horizontalalignment='center',
             color='crimson', bbox=props)
-    ax.barh(i, np.abs(robust_z_scores_dev[i]), 0.9, color=cmap(z_colors[i]))
-    ax.text(np.abs(robust_z_scores_dev[i]) + 0.25, i, raw.info['ch_names'][i],
-            ha='center', va='center', fontsize=9)
-ax.set_xlim(0, int(robust_z_scores_dev.max()+2))
+    ax.bar(i, np.abs(z_scores[i]), width=0.9, color=cmap(z_colors[i]))
+    ax.text(i, np.abs(z_scores[i]) + 0.25, raw.info['ch_names'][i],
+            fontweight='bold', fontsize=9,
+            ha='center', va='center', rotation=45)
+ax.set_xlim(-1, 64)
+if z_scores.max() < 5.0:
+    ax.set_ylim(0, 5)
+else:
+    ax.set_ylim(0, int(z_scores.max() + 2))
 plt.title('EEG channel deviation')
-plt.xlabel('Abs. Z-Score')
-plt.ylabel('Channels')
+plt.xlabel('Channels')
+plt.ylabel('Abs. Z-Score')
 plt.close(fig)
 
 # interpolate channels identified by deviation criterion
-bad_channels = [raw.ch_names[i] for i in np.where(np.abs(
-    robust_z_scores_dev) > 5.0)[0]]
-raw.info['bads'] = bad_channels
+raw.info['bads'] = list(bad_channels)
 raw.interpolate_bads(mode='accurate')
 
 ###############################################################################
