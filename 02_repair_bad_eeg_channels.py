@@ -9,21 +9,15 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-cmap = cm.get_cmap('inferno')  # noqa
-
 import numpy as np
 import pandas as pd
 
 from mne import Annotations, open_report
 from mne.io import read_raw_fif
 
-from sklearn.preprocessing import normalize
-
 # All parameters are defined in config.py
 from config import fname, parser, sampling_rate, LoggingFormat
-from bads import find_bad_channels
+from bads import find_bad_channels, plot_z_scores
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -131,30 +125,8 @@ bad_dev = bad_dev['deviation']
 # only keep unique values
 bad_channels = set(bad_dev) | set(bad_corr)
 
-# plot results
-z_colors = normalize(np.abs(z_scores).reshape((1, z_scores.shape[0]))).ravel()  # noqa: E501
-
-props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-fig, ax = plt.subplots(figsize=(20, 6))
-for i in range(z_scores.shape[0]):
-    ax.axhline(y=5.0, xmin=-1.0, xmax=65,
-               color='crimson', linestyle='dashed', linewidth=2.0)
-    ax.text(-5.0, 5.0, 'crit. Z-score',  fontsize=14,
-            verticalalignment='center', horizontalalignment='center',
-            color='crimson', bbox=props)
-    ax.bar(i, np.abs(z_scores[i]), width=0.9, color=cmap(z_colors[i]))
-    ax.text(i, np.abs(z_scores[i]) + 0.25, raw.info['ch_names'][i],
-            fontweight='bold', fontsize=9,
-            ha='center', va='center', rotation=45)
-ax.set_xlim(-1, 64)
-if z_scores.max() < 5.0:
-    ax.set_ylim(0, 5)
-else:
-    ax.set_ylim(0, int(z_scores.max() + 2))
-plt.title('EEG channel deviation')
-plt.xlabel('Channels')
-plt.ylabel('Abs. Z-Score')
-plt.close(fig)
+# create plot showing channels z-scores
+fig = plot_z_scores(z_scores, channels=channels, bads=bad_channels, show=False)
 
 # interpolate channels identified by deviation criterion
 raw.info['bads'] = list(bad_channels)
