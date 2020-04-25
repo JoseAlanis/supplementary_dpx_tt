@@ -35,6 +35,9 @@ input_file = fname.output(subject=subject,
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
 
+raw_copy = raw.copy()
+raw_copy.pick_types(eeg=True)
+
 ###############################################################################
 # 2) Import ICA weights from precious processing step
 ica_file = fname.output(subject=subject,
@@ -58,14 +61,15 @@ for eog in eogs:
 
     # find components that correlate with activity recorded at eog
     # channel in question
-    eog_indices, eog_scores = ica.find_bads_eog(eog_epochs,
+    eog_indices, eog_scores = ica.find_bads_eog(raw,
                                                 ch_name=eog,
                                                 reject_by_annotation=True)
 
     # if any "bad" components found:
-    if eog_indices and any(eog_indices) not in ica.exclude:
+    if eog_indices and any(ind not in ica.exclude for ind in eog_indices):
 
         for eog_i in eog_indices:
+            print(eog_i)
             # add component to list for exclusion
             ica.exclude.append(eog_i)  # noqa
 
@@ -74,9 +78,10 @@ for eog in eogs:
                                       picks=eog_i,
                                       psd_args={'fmax': 35.},
                                       image_args={'sigma': 1.},
-                                      show=False)[0]
+                                      show=False)
             plt.close(fig)
-            fig_evoked = ica.plot_sources(eog_evoked, show=False)
+
+            fig_evoked = ica.plot_overlay(eog_evoked, show=False)
             plt.close(fig_evoked)
 
             # create HTML report
@@ -107,21 +112,22 @@ template_raw = read_raw_fif(template_raw_file)
 template_ica_file = fname.output(subject=3,
                                  processing_step='fit_ica',
                                  file_type='ica.fif')
-template_ica_file = read_ica(template_ica_file)
+template_ica = read_ica(template_ica_file)
 
 # compute correlations with template
-corrmap(icas=[template_ica_file, ica],
+corrmap(icas=[template_ica, ica],
         template=(0, 0), threshold=0.9, label='blink_up', plot=False)
-corrmap(icas=[template_ica_file, ica],
-        template=(0, 4), threshold=0.9, label='blink_side', plot=False)
+corrmap(icas=[template_ica, ica],
+        template=(0, 5), threshold=0.9, label='blink_side', plot=False)
 
 # if new components were found add them to exclusion list
-if ica.labels_['blink_up'] and any(ica.labels_['blink_up']) not in ica.exclude:
+if ica.labels_['blink_up'] and any(comp not in ica.exclude for comp in
+                                   ica.labels_['blink_up']):
     for component_up in ica.labels_['blink_up']:
         ica.exclude.append(component_up)  # noqa
 
-if ica.labels_['blink_side'] and any(ica.labels_['blink_side']) not in \
-        ica.exclude:
+if ica.labels_['blink_side'] and any(comp not in ica.exclude for comp in
+                                     ica.labels_['blink_side']):
     for component_side in ica.labels_['blink_side']:
         ica.exclude.append(component_side)  # noqa
 

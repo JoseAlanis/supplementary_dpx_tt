@@ -30,21 +30,19 @@ input_file = fname.output(subject=subject,
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
 
+# create copy of raw
+raw_copy = raw.copy()
+
 ###############################################################################
-#  2) Activate average reference and set ICA parameters
-# raw_copy = raw.copy()
-# raw_copy.apply_proj()
-raw.info['projs'] = []
+#  2) Deactivate average reference and set ICA parameters
+raw_copy.info['projs'] = []
+raw_copy.filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)
+raw_copy.pick_types(eeg=True)
 
 # ICA parameters
 n_components = 15
 method = 'picard'
 reject = dict(eeg=300e-6)
-
-# Pick electrodes to use
-picks = pick_types(raw.info,
-                   eeg=True,
-                   eog=False)
 
 ###############################################################################
 #  2) Fit ICA
@@ -53,8 +51,7 @@ ica = ICA(n_components=n_components,
           fit_params=dict(ortho=False,
                           extended=True))
 
-ica.fit(raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs),
-        picks=picks,
+ica.fit(raw_copy,
         reject=reject,
         reject_by_annotation=True)
 
