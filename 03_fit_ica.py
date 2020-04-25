@@ -7,7 +7,7 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
-from mne import pick_types, open_report
+from mne import open_report
 from mne.io import read_raw_fif
 from mne.preprocessing import ICA
 
@@ -35,14 +35,14 @@ raw_copy = raw.copy()
 
 ###############################################################################
 #  2) Deactivate average reference and set ICA parameters
-raw_copy.info['projs'] = []
-raw_copy.filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)
+raw_copy.apply_proj()
 raw_copy.pick_types(eeg=True)
+raw_copy.filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)
 
 # ICA parameters
 n_components = 15
 method = 'picard'
-reject = dict(eeg=300e-6)
+reject = dict(eeg=250e-6)
 
 ###############################################################################
 #  2) Fit ICA
@@ -57,7 +57,7 @@ ica.fit(raw_copy,
 
 ###############################################################################
 # 3) Plot ICA components
-ica_fig = ica.plot_components(picks=range(0, 15), show=False)
+ica_fig = ica.plot_components(picks=range(0, 10), show=False)
 
 ###############################################################################
 # 4) Save ICA solution

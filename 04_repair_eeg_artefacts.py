@@ -35,9 +35,6 @@ input_file = fname.output(subject=subject,
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
 
-raw_copy = raw.copy()
-raw_copy.pick_types(eeg=True)
-
 ###############################################################################
 # 2) Import ICA weights from precious processing step
 ica_file = fname.output(subject=subject,
@@ -51,7 +48,7 @@ ica = read_ica(ica_file)
 eogs = raw.copy().pick_types(eog=True).ch_names
 
 for eog in eogs:
-    eog_epochs = create_eog_epochs(raw,
+    eog_epochs = create_eog_epochs(raw.copy().apply_proj(),
                                    ch_name=eog,
                                    reject_by_annotation=True)
 
@@ -61,7 +58,8 @@ for eog in eogs:
 
     # find components that correlate with activity recorded at eog
     # channel in question
-    eog_indices, eog_scores = ica.find_bads_eog(raw,
+    eog_indices, eog_scores = ica.find_bads_eog(eog_epochs,
+                                                threshold=3.25,
                                                 ch_name=eog,
                                                 reject_by_annotation=True)
 
@@ -78,7 +76,7 @@ for eog in eogs:
                                       picks=eog_i,
                                       psd_args={'fmax': 35.},
                                       image_args={'sigma': 1.},
-                                      show=False)
+                                      show=False)[0]
             plt.close(fig)
 
             fig_evoked = ica.plot_overlay(eog_evoked, show=False)
