@@ -29,22 +29,23 @@ input_file = fname.output(subject=subject,
                           processing_step='repair_bads',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
-raw.apply_proj()
+
+# filter data to remove drifts
+raw_filt = raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)
 
 ###############################################################################
 #  2) Set ICA parameters
 n_components = 20
-method = 'picard'
+method = 'infomax'
 reject = dict(eeg=300e-6)
 
 ###############################################################################
 #  2) Fit ICA
 ica = ICA(n_components=n_components,
           method=method,
-          fit_params=dict(ortho=False,
-                          extended=True))
+          fit_params=dict(extended=True))
 
-ica.fit(raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs),
+ica.fit(raw_filt,
         reject=reject,
         reject_by_annotation=True)
 

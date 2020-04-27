@@ -35,7 +35,6 @@ input_file = fname.output(subject=subject,
                           processing_step='repair_bads',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
-raw.apply_proj()
 
 ###############################################################################
 # 2) Import ICA weights from precious processing step
@@ -59,12 +58,11 @@ for subj in temp_subjs:
                                            processing_step='fit_ica',
                                            file_type='ica.fif')))
 
-[temp_raw.apply_proj() for temp_raw in temp_raws]
 # compute correlations with template ocular movements up/down and left/right
 corrmap(icas=[temp_icas[1], ica],
-        template=(0, 0), threshold=0.9, label='blink_up', plot=False)
+        template=(0, 0), threshold=0.85, label='blink_up', plot=False)
 corrmap(icas=[temp_icas[1], ica],
-        template=(0, 2), threshold=0.9, label='blink_side', plot=False)
+        template=(0, 5), threshold=0.85, label='blink_side', plot=False)
 
 # compute correlations with template ocular movements that look slightly
 # different
@@ -83,6 +81,7 @@ a_epo = Epochs(raw, a_evs,
                tmin=-2.5,
                tmax=2.5,
                reject_by_annotation=True,
+               proj=False,
                preload=True)
 a_epo.apply_baseline(baseline=(-0.3, -0.05))
 a_evo = a_epo.average()
