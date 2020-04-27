@@ -29,20 +29,13 @@ input_file = fname.output(subject=subject,
                           processing_step='repair_bads',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
-
-# create copy of raw
-raw_copy = raw.copy()
+raw.apply_proj()
 
 ###############################################################################
-#  2) Deactivate average reference and set ICA parameters
-raw_copy.apply_proj()
-raw_copy.pick_types(eeg=True)
-raw_copy.filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)
-
-# ICA parameters
-n_components = 15
+#  2) Set ICA parameters
+n_components = 20
 method = 'picard'
-reject = dict(eeg=250e-6)
+reject = dict(eeg=300e-6)
 
 ###############################################################################
 #  2) Fit ICA
@@ -51,13 +44,13 @@ ica = ICA(n_components=n_components,
           fit_params=dict(ortho=False,
                           extended=True))
 
-ica.fit(raw_copy,
+ica.fit(raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs),
         reject=reject,
         reject_by_annotation=True)
 
 ###############################################################################
 # 3) Plot ICA components
-ica_fig = ica.plot_components(picks=range(0, 10), show=False)
+ica_fig = ica.plot_components(picks=range(0, 20), show=False)
 
 ###############################################################################
 # 4) Save ICA solution
