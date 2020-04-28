@@ -353,8 +353,9 @@ for cue, probe in zip(cue_events[:, 2], probe_events[:, 2]):
     # check if same type of combination was shown in the previous trail
     if len(probes):
         stim = same_stim[-1]
-        if probe == probes[-1] and response == 'Correct' and reaction_probes[
-            -2] == 'Correct':
+        if probe == probes[-1] \
+                and response == 'Correct' \
+                and reaction_probes[-2] == 'Correct':
             stim += 1
             same_stim.append(stim)
         else:
@@ -381,7 +382,7 @@ metadata = pd.DataFrame(metadata)
 # 6) Extract the epochs
 
 # rejection threshold
-reject = dict(eeg=250e-6)
+reject = dict(eeg=300e-6)
 
 # extract cue epochs
 cue_epochs = Epochs(raw, cue_events, cue_event_id,

@@ -203,8 +203,8 @@ def task_extract_epochs():
 
             # The files produced by the script
             targets=[fname.output(processing_step='cue_epochs',
-                               subject=subject,
-                               file_type='epo.fif'),
+                                  subject=subject,
+                                  file_type='epo.fif'),
                      fname.output(processing_step='probe_epochs',
                                   subject=subject,
                                   file_type='epo.fif')],
