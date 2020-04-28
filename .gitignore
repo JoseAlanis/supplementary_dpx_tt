@@ -11,3 +11,6 @@ __pycache__/
 # doit
 .doit*
 system_check.txt
+
+# other files
+/00_debug.py
