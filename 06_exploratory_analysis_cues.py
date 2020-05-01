@@ -19,44 +19,43 @@ from mne.viz import plot_compare_evokeds
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat
 
-epochs_a_cue = dict()
-epochs_b_cue = dict()
+a_cues = dict()
+b_cues = dict()
 
-erps_a_cue = dict()
-erps_b_cue = dict()
+a_erps = dict()
+b_erps = dict()
 
-for subject in subjects:
+baseline = (-0.3, -0.05)
+
+# loop through subjects and compute ERPs for A and B cues
+for subj in subjects:
 
     print(LoggingFormat.PURPLE +
           LoggingFormat.BOLD +
-          'Loading epochs for subject %s' % subject +
+          'Loading epochs for subject %s' % subj +
           LoggingFormat.END)
 
     # import the output from previous processing step
-    input_file = fname.output(subject=subject,
+    input_file = fname.output(subject=subj,
                               processing_step='cue_epochs',
                               file_type='epo.fif')
-    cue_epochs = read_epochs(input_file, preload=True)
+    cue_epo = read_epochs(input_file, preload=True)
 
     # extract a and b epochs (only those with correct responses)
-    a_epochs = cue_epochs['Correct A']
-    b_epochs = cue_epochs['Correct B']
+    a_cues['subj_%s' % subj] = cue_epo['Correct A'].apply_baseline(baseline)
+    b_cues['subj_%s' % subj] = cue_epo['Correct B'].apply_baseline(baseline)
 
-    # apply baseline
-    epochs_a_cue['subj_%s' % subject] = a_epochs.apply_baseline((-0.3, -0.05))
-    epochs_b_cue['subj_%s' % subject] = b_epochs.apply_baseline((-0.3, -0.05))
-
-    # apply baseline
-    erps_a_cue['subj_%s' % subject] = epochs_a_cue['subj_%s' % subject].average()
-    erps_b_cue['subj_%s' % subject] = epochs_b_cue['subj_%s' % subject].average()
+    # compute ERP
+    a_erps['subj_%s' % subj] = a_cues['subj_%s' % subj].average()
+    b_erps['subj_%s' % subj] = b_cues['subj_%s' % subj].average()
 
 
 # weights = np.repeat(1 / len(erps_a_cue), len(erps_a_cue))
 # ga_a_cue = combine_evoked(list(erps_a_cue.values()),
 #                           weights=list(weights))
 
-ga_a_cue = grand_average(list(erps_a_cue.values()))
-ga_b_cue = grand_average(list(erps_b_cue.values()))
+ga_a_cue = grand_average(list(a_erps.values()))
+ga_b_cue = grand_average(list(b_erps.values()))
 
 # arguments fot the time-series maps
 ts_args = dict(gfp=False,
@@ -77,8 +76,12 @@ ga_a_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 ga_b_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 
 plot_compare_evokeds({'A': ga_a_cue, 'B': ga_b_cue},
-                     picks=['Pz'],
+                     # picks=['Pz'],
                      invert_y=True,
                      ylim=dict(eeg=[-10, 5]),
-                     colors={'A': 'k', 'B': 'crimson'})
+                     colors={'A': 'k', 'B': 'crimson'},
+                     axes='topo')
+
+ga_b_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
+ga_a_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
 
