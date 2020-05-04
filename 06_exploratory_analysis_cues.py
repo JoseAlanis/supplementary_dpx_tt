@@ -74,28 +74,28 @@ ga_a_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 ga_b_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 
 cis = within_subject_cis([a_erps, b_erps])
-
 electrode = 'FCz'
 pick = ga_a_cue.ch_names.index(electrode)
 
 fig, ax = plt.subplots(figsize=(8, 4))
-plot_compare_evokeds({'A': ga_a_cue, 'B': ga_b_cue},
-                     picks=pick,
-                     invert_y=True,
-                     ylim=dict(eeg=[-10, 5]),
-                     colors={'A': 'k', 'B': 'crimson'},
-                     axes=ax)
+
 ax.fill_between(ga_a_cue.times,
                 (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
                 (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
                 alpha=0.2,
                 color='k')
-
 ax.fill_between(ga_b_cue.times,
                 (ga_b_cue.data[pick] + cis[1, pick, :]) * 1e6,
                 (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
                 alpha=0.2,
                 color='crimson')
+ax.set_xlim(-0.500, 2.500)
+plot_compare_evokeds({'A': ga_a_cue.copy().crop(-0.5, 2.5), 'B': ga_b_cue.copy().crop(-0.5, 2.5)},
+                     picks=pick,
+                     invert_y=True,
+                     ylim=dict(eeg=[-10, 5]),
+                     colors={'A': 'k', 'B': 'crimson'},
+                     axes=ax)
 
 ga_b_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
 ga_a_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
