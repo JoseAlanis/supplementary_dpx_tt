@@ -13,7 +13,7 @@ License: BSD (3-clause)
 import pandas as pd
 import numpy as np
 
-from mne import read_epochs, combine_evoked, grand_average
+from mne import read_epochs, grand_average
 from mne.viz import plot_compare_evokeds
 
 # All parameters are defined in config.py
@@ -25,9 +25,10 @@ b_cues = dict()
 a_erps = dict()
 b_erps = dict()
 
-baseline = (-0.3, -0.05)
+baseline = (-0.300, -0.050)
 
-# loop through subjects and compute ERPs for A and B cues
+###############################################################################
+# 1) loop through subjects and compute ERPs for A and B cues
 for subj in subjects:
 
     print(LoggingFormat.PURPLE +
@@ -49,11 +50,8 @@ for subj in subjects:
     a_erps['subj_%s' % subj] = a_cues['subj_%s' % subj].average()
     b_erps['subj_%s' % subj] = b_cues['subj_%s' % subj].average()
 
-
-# weights = np.repeat(1 / len(erps_a_cue), len(erps_a_cue))
-# ga_a_cue = combine_evoked(list(erps_a_cue.values()),
-#                           weights=list(weights))
-
+###############################################################################
+# 2) compute grand averages
 ga_a_cue = grand_average(list(a_erps.values()))
 ga_b_cue = grand_average(list(b_erps.values()))
 
