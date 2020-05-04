@@ -10,14 +10,14 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
-import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
 
 from mne import read_epochs, grand_average
 from mne.viz import plot_compare_evokeds
 
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat
+from stats import within_subject_cis
 
 a_cues = dict()
 b_cues = dict()
@@ -73,12 +73,29 @@ topomap_args = dict(sensors=False,
 ga_a_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 ga_b_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 
+cis = within_subject_cis([a_erps, b_erps])
+
+electrode = 'FCz'
+pick = ga_a_cue.ch_names.index(electrode)
+
+fig, ax = plt.subplots(figsize=(8, 4))
 plot_compare_evokeds({'A': ga_a_cue, 'B': ga_b_cue},
-                     # picks=['Pz'],
+                     picks=pick,
                      invert_y=True,
                      ylim=dict(eeg=[-10, 5]),
                      colors={'A': 'k', 'B': 'crimson'},
-                     axes='topo')
+                     axes=ax)
+ax.fill_between(ga_a_cue.times,
+                (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
+                (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
+                alpha=0.2,
+                color='k')
+
+ax.fill_between(ga_b_cue.times,
+                (ga_b_cue.data[pick] + cis[1, pick, :]) * 1e6,
+                (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
+                alpha=0.2,
+                color='crimson')
 
 ga_b_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
 ga_a_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
