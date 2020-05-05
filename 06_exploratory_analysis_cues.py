@@ -10,7 +10,10 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
+import numpy as np
+
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 from mne import read_epochs, grand_average
 from mne.viz import plot_compare_evokeds
@@ -55,6 +58,51 @@ for subj in subjects:
 ga_a_cue = grand_average(list(a_erps.values()))
 ga_b_cue = grand_average(list(b_erps.values()))
 
+###############################################################################
+# 3) plot global field power
+gfp_times = {'t1': [0.07, 0.07],
+             't2': [0.14, 0.10],
+             't3': [0.24, 0.12],
+             't4': [0.36, 0.24],
+             't5': [0.60, 0.15],
+             't6': [2.0, 0.50]}
+
+# plot GFP and save figure
+evokeds = {'A Cue': ga_a_cue.copy().crop(tmin=-0.25),
+           'B Cue': ga_b_cue.copy().crop(tmin=-0.25)}
+
+# use viridis colors
+colors = np.linspace(0, 1, len(gfp_times.values()))
+# create plot
+fig, ax = plt.subplots(figsize=(8, 3))
+plot_compare_evokeds(evokeds,
+                     axes=ax,
+                     linestyles={'A Cue': '-', 'B Cue': '--'},
+                     styles={'A Cue': {"linewidth": 2.0},
+                             'B Cue': {"linewidth": 2.0}},
+                     legend='upper center',
+                     ylim=dict(eeg=[-0.1, 4]),
+                     colors={'A Cue': 'k', 'B Cue': 'crimson'})
+ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)
+ax.set_yticks(list(np.arange(0, 5, 1)), minor=False)
+# annotate thr gpf plot
+for i, val in enumerate(gfp_times.values()):
+    ax.bar(val[0], 5, width=val[1], alpha=0.20,
+           align ='edge', color=cm.viridis(colors[i]))
+ax.annotate('t1', xy=(0.075, 4.), weight="bold")
+ax.annotate('t2', xy=(0.155, 4.), weight="bold")
+ax.annotate('t3', xy=(0.27, 4.), weight="bold")
+ax.annotate('t4', xy=(0.45, 4.), weight="bold")
+ax.annotate('t5', xy=(0.63, 4.), weight="bold")
+ax.annotate('t6', xy=(2.24, 4.), weight="bold")
+
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_bounds(0, 4)
+ax.spines['bottom'].set_bounds(-0.25, 2.5)
+ax.xaxis.set_label_coords(0.5, -0.13)
+fig.subplots_adjust(bottom=0.15)
+
 # arguments fot the time-series maps
 ts_args = dict(gfp=False,
                time_unit='s',
@@ -74,11 +122,19 @@ ga_a_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 ga_b_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
 
 cis = within_subject_cis([a_erps, b_erps])
-electrode = 'FCz'
+electrode = 'PO8'
 pick = ga_a_cue.ch_names.index(electrode)
 
-fig, ax = plt.subplots(figsize=(8, 4))
-
+fig, ax = plt.subplots(figsize=(8, 5))
+plot_compare_evokeds({'Cue A': ga_a_cue.copy().crop(-0.5, 2.5),
+                      'Cue B': ga_b_cue.copy().crop(-0.5, 2.5)},
+                     picks=pick,
+                     invert_y=True,
+                     ylim=dict(eeg=[-7, 7]),
+                     colors={'Cue A': 'k', 'Cue B': 'crimson'},
+                     axes=ax,
+                     truncate_xaxis=True,
+                     show_sensors='lower right')
 ax.fill_between(ga_a_cue.times,
                 (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
                 (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
@@ -89,14 +145,16 @@ ax.fill_between(ga_b_cue.times,
                 (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
                 alpha=0.2,
                 color='crimson')
-ax.set_xlim(-0.500, 2.500)
-plot_compare_evokeds({'A': ga_a_cue.copy().crop(-0.5, 2.5), 'B': ga_b_cue.copy().crop(-0.5, 2.5)},
-                     picks=pick,
-                     invert_y=True,
-                     ylim=dict(eeg=[-10, 5]),
-                     colors={'A': 'k', 'B': 'crimson'},
-                     axes=ax)
+ax.set_xticks(list(np.arange(-.50, 2.55, .50)), minor=False)
+ax.set_yticks(list(np.arange(-6, 6.5, 2)), minor=False)
+ax.set_xticklabels([str(lab) for lab in np.arange(-.50, 2.55, .50)],
+                   minor=False)
+fig.axes[0].spines['bottom'].set_bounds(-0.5, 2.5)
+fig.axes[0].spines['left'].set_bounds(-6, 6)
 
-ga_b_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
-ga_a_cue.plot_image(xlim=[-0.5, 2.5], clim=dict(eeg=[-8, 8]))
+
+
+
+ga_b_cue.plot_image(xlim=[-0.25, 2.5], clim=dict(eeg=[-8, 8]))
+ga_a_cue.plot_image(xlim=[-0.25, 2.5], clim=dict(eeg=[-8, 8]))
 
