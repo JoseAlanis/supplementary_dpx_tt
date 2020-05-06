@@ -15,10 +15,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.colorbar import ColorbarBase
+from matplotlib.colors import Normalize
 
 from mne import read_epochs, combine_evoked, grand_average
 from mne.channels import make_1020_channel_selections
-from mne.viz import plot_compare_evokeds, plot_brain_colorbar
+from mne.viz import plot_compare_evokeds
 
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat
@@ -71,7 +73,7 @@ gfp_times = {'t1': [0.07, 0.07],
              't4': [0.36, 0.24],
              't5': [0.60, 0.15],
              't6': [0.75, 0.25],
-             't7': [2.0, 0.50]}
+             't7': [2.00, 0.50]}
 
 # create evokeds dict
 evokeds = {'A Cue': ga_a_cue.copy().crop(tmin=-0.25),
@@ -88,20 +90,21 @@ plot_compare_evokeds(evokeds,
                      styles={'A Cue': {"linewidth": 2.0},
                              'B Cue': {"linewidth": 2.0}},
                      ylim=dict(eeg=[-0.1, 4]),
-                     colors={'A Cue': 'k', 'B Cue': 'crimson'})
+                     colors={'A Cue': 'k', 'B Cue': 'crimson'},
+                     show=False)
 ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)
 ax.set_yticks(list(np.arange(0, 5, 1)), minor=False)
 # annotate the gpf plot and tweak it's appearance
 for i, val in enumerate(gfp_times.values()):
     ax.bar(val[0], 5, width=val[1], alpha=0.20,
            align='edge', color=cmap(colors[i]))
-ax.annotate('t1', xy=(0.075, 4.), weight="bold")
+ax.annotate('t1', xy=(0.070, 4.), weight="bold")
 ax.annotate('t2', xy=(0.155, 4.), weight="bold")
-ax.annotate('t3', xy=(0.27, 4.), weight="bold")
-ax.annotate('t4', xy=(0.45, 4.), weight="bold")
+ax.annotate('t3', xy=(0.270, 4.), weight="bold")
+ax.annotate('t4', xy=(0.450, 4.), weight="bold")
 ax.annotate('t5', xy=(0.635, 4.), weight="bold")
 ax.annotate('t6', xy=(0.845, 4.), weight="bold")
-ax.annotate('t7', xy=(2.24, 4.), weight="bold")
+ax.annotate('t7', xy=(2.230, 4.), weight="bold")
 ax.legend(loc='upper right', framealpha=1)
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
@@ -128,132 +131,158 @@ topomap_args = dict(sensors=False,
                     average=0.05,
                     extrapolate='local')
 
-fig = ga_a_cue.plot_joint(ttp,
-                          ts_args=ts_args,
-                          topomap_args=topomap_args,
-                          title='Cue A (64 EEG channels)')
-fig.axes[-1].texts[0]._fontproperties._size=12.0  # noqa
-fig.axes[-1].texts[0]._fontproperties._weight='bold'  # noqa
-fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-fig.axes[0].set_yticks(list(np.arange(-8, 8.5, 4)), minor=False)
-fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
-                    color='black', linestyle='dashed', linewidth=.8)
-fig.axes[0].axvline(x=0, ymin=-5, ymax=5,
-                    color='black', linestyle='dashed', linewidth=.8)
-fig.axes[0].spines['top'].set_visible(False)
-fig.axes[0].spines['right'].set_visible(False)
-fig.axes[0].spines['left'].set_bounds(-8, 8)
-fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
-fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
-w, h = fig.get_size_inches()
-fig.set_size_inches(w * 1.15, h * 1.15)
-fig.savefig(fname.figures + '/Evoked_A_Cue.pdf', dpi=300)
+# plot activity pattern evoked by the cues
+for evoked in evokeds:
+    fig = evokeds[evoked].plot_joint(ttp,
+                                     ts_args=ts_args,
+                                     topomap_args=topomap_args,
+                                     title=evoked + ' (64 EEG channels)',
+                                     show=False)
+    fig.axes[-1].texts[0]._fontproperties._size=12.0  # noqa
+    fig.axes[-1].texts[0]._fontproperties._weight='bold'  # noqa
+    fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    fig.axes[0].set_yticks(list(np.arange(-8, 8.5, 4)), minor=False)
+    fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
+                        color='black', linestyle='dashed', linewidth=.8)
+    fig.axes[0].axvline(x=0, ymin=-5, ymax=5,
+                        color='black', linestyle='dashed', linewidth=.8)
+    fig.axes[0].spines['top'].set_visible(False)
+    fig.axes[0].spines['right'].set_visible(False)
+    fig.axes[0].spines['left'].set_bounds(-8, 8)
+    fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
+    fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
+    w, h = fig.get_size_inches()
+    fig.set_size_inches(w * 1.15, h * 1.15)
+    fig.savefig(fname.figures + '/Evoked_%s.pdf' % evoked,
+                dpi=300)
 
-ga_b_cue.plot_joint(ttp, ts_args=ts_args, topomap_args=topomap_args)
+###############################################################################
+# 5) plot difference wave (Cue B - Cue A)
 
-
-
-
-
-# fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-# ga_a_cue.plot_image(xlim=[-0.25, 2.5],
-#                     clim=dict(eeg=[-8, 8]),
-#                     axes=ax[0])
-# ga_b_cue.plot_image(xlim=[-0.25, 2.5],
-#                     clim=dict(eeg=[-8, 8]),
-#                     axes=ax[1])
-
+# compute difference wave
 ab_diff = combine_evoked([ga_b_cue, -ga_a_cue], weights='equal')
 
 selections = make_1020_channel_selections(ga_a_cue.info, midline='12z')
 
-frontal = [i for i in ga_b_cue.ch_names if i.startswith('F') or i.startswith('A')]
-central = [i for i in ga_b_cue.ch_names if i.startswith('C')]
-parietal = [i for i in ga_b_cue.ch_names if i.startswith('P|O')]
+fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(20, 5))
+for s, selection in enumerate(selections):
+    picks = selections[selection]
 
+    mask = abs(ab_diff.data) > 1.1e-6
 
+    ab_diff.plot_image(xlim=[-0.25, 2.5],
+                       picks=picks,
+                       clim=dict(eeg=[-5, 5]),
+                       colorbar=False,
+                       axes=ax[s],
+                       mask=mask,
+                       mask_cmap='RdBu_r',
+                       mask_alpha=0.5,
+                       show=False)
+    # tweak plot appearance
+    if selection in {'Left', 'Right'}:
+        title = selection + ' hemisphere'
+    else:
+        title = 'Midline'
+    ax[s].title._text = title # noqa
+    ax[s].set_ylabel('Channels', labelpad=10.0,
+                     fontsize=11.0, fontweight='bold')
 
-frontal = ['FT7', 'F7', 'AF7', 'F5', 'F3', 'AF3', 'F1', 'AF3',
-           'Fp1', 'Fpz', 'Fp2',
-           'AF4', 'F2', 'AF4', 'F4', 'F6', 'AF8', 'F8', 'FT8']
+    ax[s].set_xlabel('Time (s)',
+                     labelpad=10.0, fontsize=11.0, fontweight='bold')
 
+    ax[s].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    ax[s].set_yticks(np.arange(len(picks)), minor=False)
+    labels = [ga_a_cue.ch_names[i] for i in picks]
+    ax[s].set_yticklabels(labels, minor=False)
+    ax[s].spines['top'].set_visible(False)
+    ax[s].spines['right'].set_visible(False)
+    ax[s].spines['left'].set_bounds(-0.5, len(picks)-0.5)
+    ax[s].spines['bottom'].set_bounds(-.25, 2.5)
+    ax[s].texts = []
 
-x =  ['Fp1', 'Fpz', 'Fp2',
-      'AF7', 'AF3', 'AFz', 'AF4', 'AF8',
-      'FT7','F7', 'F5',  'F3', 'F1',  'Fz', 'F2', 'F4', 'F6', 'F8',  'FT8']
+    # add intercept line (at 0 s) and customise figure boundaries
+    ax[s].axvline(x=0, ymin=0, ymax=len(picks),
+                  color='black', linestyle='dashed', linewidth=1.0)
 
-central = ['FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6',
-           'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6',
-           'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6']
+    colormap = cm.get_cmap('RdBu_r')
+    orientation = 'vertical'
+    norm = Normalize(vmin=-5.0, vmax=5.0)
+    divider = make_axes_locatable(ax[s])
+    cax = divider.append_axes('right', size='2.5%', pad=0.2)
+    cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
+                        ticks=[-5.0, 0., 5.0], norm=norm,
+                        label=r'Difference B-A ($\mu$V)',
+                        orientation=orientation)
+    cbar.outline.set_visible(False)
+    cbar.ax.set_frame_on(True)
+    label = r'Difference B-A (in $\mu V$)'
+    for key in ('left', 'top',
+                'bottom' if orientation == 'vertical' else 'right'):
+        cbar.ax.spines[key].set_visible(False)
 
-picks = selections
-picks = selections['Midline']
-picks = np.arange(0, 64)
-
-fig, ax = plt.subplots(figsize=(8, 4))
-ab_diff.plot_image(xlim=[-0.25, 2.5],
-                   picks=picks,
-                   clim=dict(eeg=[-5, 5]),
-                   colorbar=True,
-                   axes=ax)
-ax.set_yticks(np.arange(len(picks)), minor=False)
-labels = [ga_a_cue.ch_names[i] for i in picks]
-ax.set_yticklabels(labels, minor=False)
-
-ax.texts = []
-colormap = 'RdBu_r'
-clim = dict(kind='value', lims=[-5, 0, 5])
-divider = make_axes_locatable(ax)
-cax = divider.append_axes('right', size='3.5%', pad=0.5)
-cbar = plot_brain_colorbar(cax, clim, colormap, label=r'Difference in $\mu V$')
-fig.subplots_adjust(
-    left=0.1, right=0.9, wspace=0.1, hspace=0.5)
+    fig.subplots_adjust(
+        left=0.05, right=0.95, bottom=0.15, wspace=0.3, hspace=0.25)
+# save figure
 fig.savefig(fname.figures + '/Diff_A-B_image.pdf', dpi=300)
 
-ab_diff.plot_joint()
+# plot topographie of the difference wave
+ttp = [0.20, 0.30, 0.60, 0.80, 1.0, 1.5, 2.30]
+fig, ax = plt.subplots(nrows=1, ncols=len(ttp), figsize=(15, 2.5))
+for ti, t in enumerate(ttp):
+    ab_diff.plot_topomap(times=t,
+                         average=0.05,
+                         vmin=-5, vmax=5,
+                         extrapolate='head',
+                         colorbar=False,
+                         axes=ax[ti],
+                         show=False)
+fig.savefig(fname.figures + '/Diff_Topomaps.pdf', dpi=300)
 
-
-ab_diff.plot_topomap(times='peaks',
-                     average=0.05, extrapolate='local',
-                     outlines='skirt')
-
-
-ab_diff.plot_topomap(times=[0.2, 0.35, 0.61, 1.15, 1.55, 1.80, 2.35],
-                     average=0.05, extrapolate='local',
-                     outlines='skirt')
-
-ab_diff.plot_joint()
-
-
-
-
+###############################################################################
+# 6) Plot ERPs for individual electrodes of interest
 cis = within_subject_cis([a_erps, b_erps])
-electrode = 'FCz'
-pick = ga_a_cue.ch_names.index(electrode)
 
-fig, ax = plt.subplots(figsize=(8, 5))
-plot_compare_evokeds({'Cue A': ga_a_cue.copy().crop(-0.5, 2.5),
-                      'Cue B': ga_b_cue.copy().crop(-0.5, 2.5)},
-                     picks=pick,
-                     invert_y=True,
-                     ylim=dict(eeg=[-7, 7]),
-                     colors={'Cue A': 'k', 'Cue B': 'crimson'},
-                     axes=ax,
-                     truncate_xaxis=True,
-                     show_sensors='lower right')
-ax.fill_between(ga_a_cue.times,
-                (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
-                (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
-                alpha=0.2,
-                color='k')
-ax.fill_between(ga_b_cue.times,
-                (ga_b_cue.data[pick] + cis[1, pick, :]) * 1e6,
-                (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
-                alpha=0.2,
-                color='crimson')
-ax.set_xticks(list(np.arange(-.50, 2.55, .50)), minor=False)
-ax.set_yticks(list(np.arange(-6, 6.5, 2)), minor=False)
-ax.set_xticklabels([str(lab) for lab in np.arange(-.50, 2.55, .50)],
-                   minor=False)
-fig.axes[0].spines['bottom'].set_bounds(-0.5, 2.5)
-fig.axes[0].spines['left'].set_bounds(-6, 6)
+for electrode in ['FCz', 'Pz', 'PO8']:
+    pick = ga_a_cue.ch_names.index(electrode)
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    plot_compare_evokeds({'Cue A': ga_a_cue.copy().crop(-0.25, 2.5),
+                          'Cue B': ga_b_cue.copy().crop(-0.25, 2.5)},
+                         vlines=[],
+                         picks=pick,
+                         invert_y=False,
+                         ylim=dict(eeg=[-8.5, 8.5]),
+                         colors={'Cue A': 'k', 'Cue B': 'crimson'},
+                         axes=ax,
+                         truncate_xaxis=False,
+                         show_sensors='upper right',
+                         show=False)
+    ax.axhline(y=0, xmin=-.25, xmax=2.5,
+               color='black', linestyle='dotted', linewidth=.8)
+    ax.axvline(x=0, ymin=-8.5, ymax=8.5,
+               color='black', linestyle='dotted', linewidth=.8)
+    ax.fill_between(ga_a_cue.times,
+                    (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
+                    (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
+                    alpha=0.2,
+                    color='k')
+    ax.fill_between(ga_b_cue.times,
+                    (ga_b_cue.data[pick] + cis[1, pick, :]) * 1e6,
+                    (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
+                    alpha=0.2,
+                    color='crimson')
+    ax.legend(loc='upper left', framealpha=1)
+    ax.set_xlabel('Time (s)', labelpad=10.0, fontsize=11.0)
+    ax.set_ylim(-8.5, 8.5)
+    ax.set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    ax.set_yticks(list(np.arange(-8, 8.5, 2)), minor=False)
+    ax.set_xticklabels([str(lab) for lab in np.arange(-.25, 2.55, .25)],
+                       minor=False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_bounds(-8, 8)
+    ax.spines['bottom'].set_bounds(-.25, 2.5)
+    fig.subplots_adjust(bottom=0.15)
+    fig.savefig(fname.figures + '/ERP_AB_%s.pdf' % electrode,
+                dpi=300)
