@@ -76,8 +76,8 @@ gfp_times = {'t1': [0.07, 0.07],
              't7': [2.00, 0.50]}
 
 # create evokeds dict
-evokeds = {'A Cue': ga_a_cue.copy().crop(tmin=-0.25),
-           'B Cue': ga_b_cue.copy().crop(tmin=-0.25)}
+evokeds = {'Cue A': ga_a_cue.copy().crop(tmin=-0.25),
+           'Cue B': ga_b_cue.copy().crop(tmin=-0.25)}
 
 # use viridis colors
 colors = np.linspace(0, 1, len(gfp_times.values()))
@@ -86,11 +86,11 @@ cmap = cm.get_cmap('viridis')
 fig, ax = plt.subplots(figsize=(8, 3))
 plot_compare_evokeds(evokeds,
                      axes=ax,
-                     linestyles={'A Cue': '-', 'B Cue': '--'},
-                     styles={'A Cue': {"linewidth": 2.0},
-                             'B Cue': {"linewidth": 2.0}},
+                     linestyles={'Cue A': '-', 'Cue B': '--'},
+                     styles={'Cue A': {"linewidth": 2.0},
+                             'Cue B': {"linewidth": 2.0}},
                      ylim=dict(eeg=[-0.1, 4]),
-                     colors={'A Cue': 'k', 'B Cue': 'crimson'},
+                     colors={'Cue A': 'k', 'Cue B': 'crimson'},
                      show=False)
 ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)
 ax.set_yticks(list(np.arange(0, 5, 1)), minor=False)
@@ -129,14 +129,15 @@ topomap_args = dict(sensors=False,
                     time_unit='s',
                     vmin=8, vmax=-8,
                     average=0.05,
-                    extrapolate='local')
+                    extrapolate='head')
 
 # plot activity pattern evoked by the cues
 for evoked in evokeds:
+    title = evoked.replace("_", " ") + ' (64 EEG channels)'
     fig = evokeds[evoked].plot_joint(ttp,
                                      ts_args=ts_args,
                                      topomap_args=topomap_args,
-                                     title=evoked + ' (64 EEG channels)',
+                                     title=title,
                                      show=False)
     fig.axes[-1].texts[0]._fontproperties._size=12.0  # noqa
     fig.axes[-1].texts[0]._fontproperties._weight='bold'  # noqa
@@ -153,8 +154,8 @@ for evoked in evokeds:
     fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
     w, h = fig.get_size_inches()
     fig.set_size_inches(w * 1.15, h * 1.15)
-    fig.savefig(fname.figures + '/Evoked_%s.pdf' % evoked,
-                dpi=300)
+    fig_name = fname.figures + '/Evoked_%s.pdf' % evoked.replace(' ', '_')
+    fig.savefig(fig_name, dpi=300)
 
 ###############################################################################
 # 5) plot difference wave (Cue B - Cue A)
