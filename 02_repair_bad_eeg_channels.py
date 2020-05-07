@@ -17,7 +17,8 @@ from mne.io import read_raw_fif
 
 # All parameters are defined in config.py
 from config import fname, parser, sampling_rate, LoggingFormat
-from bads import find_bad_channels, plot_z_scores
+from bads import find_bad_channels
+from viz import plot_z_scores
 
 # Handle command line arguments
 args = parser.parse_args()
