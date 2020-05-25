@@ -142,5 +142,6 @@ def report_path(path, subject):
 # The full path for report file output
 fname.add('report', report_path)
 
-# File produced by check_system.py
+# Files produced by system check and validator
 fname.add('system_check', './system_check.txt')
+fname.add('validator', './validator.txt')
