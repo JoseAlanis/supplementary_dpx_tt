@@ -38,7 +38,8 @@ class LoggingFormat:
 
 ###############################################################################
 # User parser to handle command line arguments
-parser = argparse.ArgumentParser(description=__doc__)
+parser = argparse.ArgumentParser(description='Parse command line argument for '
+                                             'pre-processing of EEG data.')
 parser.add_argument('subject',
                     metavar='sub###',
                     help='The subject to process',
@@ -118,7 +119,7 @@ fname.add('results', '{derivatives_dir}/results')
 fname.add('figures', '{results}/figures')
 
 # The paths for data file input
-fname.add('source', '{sourcedata_dir}/sub-{subject:02d}/sub-{subject:02d}.bdf')
+fname.add('source', '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
 
 
 # The paths that are produced by the analysis steps
