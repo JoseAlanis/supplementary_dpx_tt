@@ -67,7 +67,7 @@ generic = cues['subj_%s' % subjects[0]].copy()
 # containing the results of the linear regression in an eeg-like format
 # (i.e., channels x times points).
 epochs_info = generic.info
-n_channels = len(generic['ch_names'])
+n_channels = len(epochs_info['ch_names'])
 n_times = len(generic.times)
 
 # also save times first time-point in data
@@ -78,7 +78,7 @@ tmin = generic.tmin
 subjects = list(cues.keys())
 
 # independent variables to be used in the analysis (i.e., predictors)
-predictors = ['cue']
+predictors = ['intercept', 'cue']
 
 # number of predictors
 n_predictors = len(predictors)
