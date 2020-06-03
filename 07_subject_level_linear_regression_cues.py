@@ -12,23 +12,13 @@ License: BSD (3-clause)
 import numpy as np
 import pandas as pd
 
-from scipy import stats
+from sklearn.linear_model import LinearRegression
 
-from mne import grand_average
-from mne.viz import plot_compare_evokeds
-
-from sklearn.metrics import r2_score
-
-from mne.stats.cluster_level import _setup_connectivity, _find_clusters, \
-    _reshape_clusters
-from mne.channels import find_ch_connectivity
+from mne import read_epochs
 from mne.decoding import Vectorizer, get_coef
-from mne.evoked import EvokedArray
-from mne.viz import plot_topomap, plot_compare_evokeds, tight_layout
-from mne import read_epochs, combine_evoked, find_layout
 
 # All parameters are defined in config.py
-from config import subjects, fname, LoggingFormat
+from config import subjects, fname, LoggingFormat, n_jobs
 
 # dicts for storing individual sets of epochs/ERPs
 cues = dict()
@@ -63,51 +53,62 @@ for subj in subjects:
 generic = cues['subj_%s' % subjects[0]].copy()
 
 # save the generic info structure of cue epochs (i.e., channel names, number of
-# channels, etc.). This is needed for creating an homologous mne.Epochs object
-# containing the results of the linear regression in an eeg-like format
-# (i.e., channels x times points).
+# channels, etc.).
 epochs_info = generic.info
 n_channels = len(epochs_info['ch_names'])
 n_times = len(generic.times)
-
-# also save times first time-point in data
-times = generic.times
-tmin = generic.tmin
 
 # subjects
 subjects = list(cues.keys())
 
 # independent variables to be used in the analysis (i.e., predictors)
-predictors = ['intercept', 'cue']
+predictors = ['cue']
 
 # number of predictors
 n_predictors = len(predictors)
 
 ###############################################################################
 # 3) initialise place holders for the storage of results
-# place holders for bootstrap samples
-betas = np.zeros((len(predictors),
-                  len(cues.values()),
+betas = np.zeros((len(cues.values()),
                   n_channels * n_times))
 
 # dicts for results evoked-objects
 betas_evoked = dict()
-t_evokeds = dict()
-r2_evoked = dict()
 
 ###############################################################################
-# 4) Fit linear model on a subject level
-
-for subj_ind, subject in enumerate(cues.values()):
+# 4) Fit linear model for each subject
+for subj_ind, subj in enumerate(cues):
+    print(subj_ind, subj)
 
     # 4.1) create subject design matrix using epochs metadata
-    metadata = subject.metadata.copy()
+    metadata = cues[subj].metadata.copy()
 
     # only keep predictor columns
     design = metadata[predictors]
-    # add intercept (constant) to design matrix
-    design = design.assign(intercept=1)
 
-    design = pd.get_dummies(design, drop_first=True)
+    # dummy code cue variable
+    dummies = pd.get_dummies(design[predictors], drop_first=True)
+    design = pd.concat([design.drop(predictors, axis=1), dummies], axis=1)
 
+    # 4.2) vectorise channel data for linear regression
+    # data to be analysed
+    dat = cues[subj].get_data()
+    Y = Vectorizer().fit_transform(dat)
 
+    # 4.3) fit linear model with sklearn's LinearRegression
+    linear_model = LinearRegression(n_jobs=n_jobs)
+    linear_model.fit(design, Y)
+
+    # 4.4) extract the resulting coefficients (i.e., betas)
+    # extract betas
+    coefs = get_coef(linear_model, 'coef_')
+
+    # save results
+    for pred_i, predictor in enumerate(predictors):
+
+        # extract relevant dimension (in case of multiple predictors)
+        betas[subj_ind, :] = coefs[:, pred_i]
+
+###############################################################################
+# 5) Save subject-level results to disk
+np.save(fname.results + '/subj_betas_cue.npy', betas)
