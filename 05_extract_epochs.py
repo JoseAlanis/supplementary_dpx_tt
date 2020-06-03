@@ -465,11 +465,3 @@ with open_report(fname.report(subject=subject)[0]) as report:
                                 replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)
-
-# selections = make_1020_channel_selections(epochs.info, midline="12z")
-# probe_epochs['Correct AX'].copy().apply_baseline((-3., -2.75)).plot_image(
-#     group_by=selections,
-#     sigma=1.5,
-#     overlay_times=probe_epochs['Correct AX'].metadata.rt,
-#     combine='median',
-#     ts_args=dict(vlines=[0, probe_epochs['Correct AX'].metadata.rt.mean()]))

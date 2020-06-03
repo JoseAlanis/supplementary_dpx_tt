@@ -30,7 +30,7 @@ def task_check():
     return dict(
         file_dep=['check_system.py'],
         targets=[fname.system_check],
-        actions=['python check_system.py']
+        actions=['python check_system.py %s' % fname.data_dir]
     )
 
 
