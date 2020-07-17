@@ -1,7 +1,7 @@
 """
-==============================
-Fit linear model to cue epochs
-==============================
+=============================================
+Fit single subject linear model to cue epochs
+=============================================
 
 Mass-univariate analysis of cue evoked activity.
 
@@ -71,9 +71,6 @@ n_predictors = len(predictors)
 # 3) initialise place holders for the storage of results
 betas = np.zeros((len(cues.values()),
                   n_channels * n_times))
-
-# dicts for results evoked-objects
-betas_evoked = dict()
 
 ###############################################################################
 # 4) Fit linear model for each subject

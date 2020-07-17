@@ -163,6 +163,7 @@ for evoked in evokeds:
 # compute difference wave
 ab_diff = combine_evoked([ga_b_cue, -ga_a_cue], weights='equal')
 
+# make channel ROIs for easier interpretation of the plot
 selections = make_1020_channel_selections(ga_a_cue.info, midline='12z')
 
 fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(20, 5))
@@ -176,7 +177,7 @@ for s, selection in enumerate(selections):
                        clim=dict(eeg=[-5, 5]),
                        colorbar=False,
                        axes=ax[s],
-                       mask=mask,
+                       # mask=mask,
                        mask_cmap='RdBu_r',
                        mask_alpha=0.5,
                        show=False)
