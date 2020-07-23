@@ -44,6 +44,7 @@ os.makedirs(fname.reports_dir, exist_ok=True)
 
 # directories for results
 os.makedirs(fname.results, exist_ok=True)
+os.makedirs(fname.rt, exist_ok=True)
 os.makedirs(fname.figures, exist_ok=True)
 
 # prints some information about the system

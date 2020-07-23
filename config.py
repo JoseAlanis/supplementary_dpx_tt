@@ -116,6 +116,7 @@ fname.add('sourcedata_dir', '{data_dir}/sourcedata')
 fname.add('derivatives_dir', '{data_dir}/derivatives')
 fname.add('reports_dir', '{derivatives_dir}/reports')
 fname.add('results', '{derivatives_dir}/results')
+fname.add('rt', '{results}/rt')
 fname.add('figures', '{results}/figures')
 
 # The paths for data file input
