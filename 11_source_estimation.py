@@ -2,18 +2,19 @@
 import os.path as op
 
 import numpy as np
-from numpy.random import randn
 
 from scipy import stats as stats
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 from mne.datasets import fetch_fsaverage
+from mne.epochs import equalize_epoch_counts
+from mne.minimum_norm import make_inverse_operator, apply_inverse
 from mne.stats import (spatio_temporal_cluster_1samp_test,
                        summarize_clusters_stc)
-from mne.minimum_norm import make_inverse_operator, apply_inverse
-from mne.viz import plot_alignment, plot_cov
-from mne import read_epochs, make_forward_solution, sensitivity_map, \
-    compute_covariance, read_source_spaces, compute_source_morph, \
-    spatial_src_adjacency
+from mne import read_epochs, make_forward_solution, compute_covariance, \
+    SourceEstimate
 
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat, n_jobs
@@ -25,43 +26,120 @@ trans = 'fsaverage'  # MNE has a built-in fsaverage transformation
 src = op.join(fs_dir, 'bem', 'fsaverage-ico-5-src.fif')
 bem = op.join(fs_dir, 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif')
 
+baseline = (-0.300, -0.050)
 
-epochs = dict()
+method = "dSPM"
+snr = 3.
+lambda2 = 1. / snr ** 2
+
+stcs_a = []
+stcs_b = []
 
 ###############################################################################
 # 1) loop through subjects and compute ERPs for A and B cues
 for subj in subjects:
     # import the output from previous processing step
-    input_file = fname.output(subject=11,
+    input_file = fname.output(subject=subj,
                               processing_step='cue_epochs',
                               file_type='epo.fif')
     cue_epo = read_epochs(input_file, preload=True)
 
-    epochs['subj_%s' % subj] = cue_epo['Correct A', 'Correct B']
+    a_epo = cue_epo['Correct A']
+    a_epo.apply_baseline(baseline=baseline).crop(tmin=-0.3, tmax=0.20)
+    b_epo = cue_epo['Correct B']
+    b_epo.apply_baseline(baseline=baseline).crop(tmin=-0.3, tmax=0.20)
 
-epochs_info = epochs['subj_%s' % subjects[0]].info
+    a_epochs_info = a_epo.info
+    b_epochs_info = b_epo.info
 
-plot_alignment(epochs_info,
-               src=src, eeg=['original', 'projected'],
-               trans=trans,
-               show_axes=True, mri_fiducials=True, dig='fiducials')
+    equalize_epoch_counts([a_epo, b_epo])
 
-fwd = make_forward_solution(epochs_info, trans=trans, src=src,
-                            bem=bem, eeg=True, mindist=5.0, n_jobs=1)
+    noise_cov_a = compute_covariance(
+        a_epo, tmax=0.,
+        method=['shrunk', 'empirical'], rank=None, verbose=True)
+    noise_cov_b = compute_covariance(
+        b_epo, tmax=0.,
+        method=['shrunk', 'empirical'], rank=None, verbose=True)
 
-eeg_map = sensitivity_map(fwd, ch_type='eeg', mode='fixed')
-eeg_map.plot(time_label='EEG sensitivity', subjects_dir=subjects_dir,
-             clim=dict(lims=[5, 50, 100]))
+    evoked_a = a_epo.average()
+    evoked_b = b_epo.average()
+    # evoked_a.plot(time_unit='s')
+    # evoked_a.plot_topomap(times=np.linspace(0.05, 0.15, 5), ch_type='eeg',
+    #                       time_unit='s')
+    # Show whitening:
+    # evoked_a.plot_white(noise_cov_a, time_unit='s')
 
-noise_cov = compute_covariance(epochs['subj_%s' % subjects[0]],
-                               tmax=0., method=['shrunk', 'empirical'],
-                               rank=None, verbose=True)
-fig_cov, fig_spectra = plot_cov(noise_cov, epochs_info)
+    fwd_a = make_forward_solution(evoked_a.info, trans=trans, src=src,
+                                  bem=bem, eeg=True, mindist=5.0, n_jobs=2)
+    fwd_b = make_forward_solution(evoked_b.info, trans=trans, src=src,
+                                  bem=bem, eeg=True, mindist=5.0, n_jobs=2)
 
-# make an MEG inverse operator
-inverse_operator = make_inverse_operator(
-    epochs_info, fwd, noise_cov, loose=0.2, depth=0.8)
-del fwd
+    # make an MEG inverse operator
+    inverse_operator_a = make_inverse_operator(
+       evoked_a.info, fwd_a, noise_cov_a, loose=0.2, depth=0.8)
+    inverse_operator_b = make_inverse_operator(
+       evoked_b.info, fwd_b, noise_cov_b, loose=0.2, depth=0.8)
+    del fwd_a, fwd_b
+
+    stc_a, residual_a = apply_inverse(evoked_a, inverse_operator_a, lambda2,
+                                      method=method, pick_ori=None,
+                                      return_residual=True, verbose=True)
+
+    stc_b, residual_b = apply_inverse(evoked_b, inverse_operator_b, lambda2,
+                                      method=method, pick_ori=None,
+                                      return_residual=True, verbose=True)
+
+    # store results in list
+    stcs_a.append(stc_a)
+    stcs_b.append(stc_b)
+
+data = np.average([s.data for s in stcs_a], axis=0)
+average_stc_a = SourceEstimate(data, stcs_a[0].vertices,
+                               stcs_a[0].tmin, stcs_a[0].tstep,
+                               stcs_a[0].subject)
+
+
+vertno_max, time_max = average_stc_a.get_peak(hemi='rh')
+
+surfer_kwargs = dict(
+    hemi='split', subjects_dir=subjects_dir,
+    colormap='magma',
+    colorbar=False,
+    background='white',
+    foreground='black',
+    clim=dict(kind='value', lims=[3, 4, 5]),
+    views='par',
+    initial_time=time_max, time_unit='s',
+    size=(1600, 1000), smoothing_steps=10,
+    show_traces=False)
+brain = average_stc_a.plot(**surfer_kwargs)
+brain.add_foci(vertno_max, coords_as_verts=True, hemi='rh', color='black',
+               scale_factor=0.5, alpha=0.75)
+brain.add_text(0.1, 0.9, 'dSPM (plus location of maximal activation)', 'title',
+               font_size=14)
+screenshot = brain.screenshot()
+brain.close()
+
+nonwhite_pix = (screenshot != 255).any(-1)
+nonwhite_row = nonwhite_pix.any(1)
+nonwhite_col = nonwhite_pix.any(0)
+cropped_screenshot = screenshot[nonwhite_row][:, nonwhite_col]
+
+fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4.5, 3.5))
+axes.imshow(cropped_screenshot)
+axes.axis('off')
+# add a vertical colorbar with the same properties as the 3D one
+divider = make_axes_locatable(axes)
+cax = divider.append_axes('right', size='5%', pad=0.2)
+cbar = mne.viz.plot_brain_colorbar(cax, clim=dict(kind='value', lims=[3, 4, 5]),
+                                   colormap='magma',
+                                   label='Activation (F)')
+fig.subplots_adjust(
+    left=0.15, right=0.9, bottom=0.01, top=0.9, wspace=0.1, hspace=0.5)
+fig_name = fname.figures + '/STC_A_170ms.pdf'
+fig.savefig(fig_name, dpi=600)
+
+
 
 snr = 3.0
 lambda2 = 1.0 / snr ** 2
