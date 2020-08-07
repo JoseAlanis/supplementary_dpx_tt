@@ -9,6 +9,8 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
+from os import path as op
+
 import pandas as pd
 import numpy as np
 
@@ -24,7 +26,7 @@ subject = args.subject
 
 print(LoggingFormat.PURPLE +
       LoggingFormat.BOLD +
-      'Finding and removing bad components for subject %s' % subject +
+      'Extracting epochs for subject %s' % subject +
       LoggingFormat.END)
 
 ###############################################################################
@@ -432,10 +434,11 @@ probe_output_path = fname.output(processing_step='probe_epochs',
                                  subject=subject,
                                  file_type='epo.fif')
 
-# resample and save to disk
+# resample and save cue epochs to disk
 cue_epochs.resample(sfreq=100.)
 cue_epochs.save(cue_output_path, overwrite=True)
 
+# also save probe epochs to disk
 probe_epochs.resample(sfreq=100.)
 probe_epochs.save(probe_output_path, overwrite=True)
 
@@ -465,3 +468,16 @@ with open_report(fname.report(subject=subject)[0]) as report:
                                 replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)
+
+###############################################################################
+# 10) RT measures
+
+# finally, extract epochs metadata (reaction time, etc.) and save them
+# for later analyses
+rt_data = cue_epochs.metadata
+rt_data = rt_data.assign(subject=subject)
+
+# save to disk
+rt_data.to_csv(op.join(fname.rt, 'sub-%s-rt.tsv' % subject),
+               sep='\t',
+               index=False)

@@ -6,6 +6,7 @@
 
 # source function for fast loading and installing of packages
 source('./r_functions/getPacks.R')
+source('./r_functions/spr2.R')
 
 
 # 1) define the path to behavioral data directory ------------------------------
@@ -64,7 +65,24 @@ corrects <- corrects %>%
   group_by(subject, block, probe) %>%
   mutate(w_rt = winsor(rt, trim = 0.1))
 
-# quick plot
+# ** some descriptive statistics **
+# mean rt and sd (trial type by block)
+corrects %>% group_by(probe, block) %>%
+  summarise(m = mean(rt), sd = sd(rt))
+# by trial type
+corrects %>% group_by(probe) %>%
+  summarise(m = mean(rt), sd = sd(rt))
+# by block
+corrects %>% group_by(block) %>%
+  summarise(m = mean(rt), sd = sd(rt))
+# average number of trials
+corrects %>%
+  group_by(subject, cue) %>%
+  summarise(n = sum(!is.na(rt))) %>%
+  group_by(cue) %>%
+  summarise(mn = mean(n), sd = sd(n))
+
+# plot distribution of reaction time
 getPacks(c('ggplot2', 'viridis'))
 rt_plot <- ggplot(corrects, aes(x = rt, fill = probe, colour = probe)) +
   geom_density(alpha = 0.5, aes(y = ..scaled..)) +
@@ -100,17 +118,125 @@ ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
        plot = rt_plot, width = 4, height = 8)
 
 
-# 3) model rt data -------------------------------------------------------------
+# 4) model rt data -------------------------------------------------------------
 
-# this part requires the package 'lme4' and 'car'
-getPacks(c('lme4', 'car', 'sjPlot'))
+# this part requires the following packages
+getPacks(c('lme4', 'car',
+           'sjPlot',
+           'tidyr'))
+
+# summarise to the level of trial types by block
+dat_for_mod <- corrects %>%
+  group_by(subject, block, probe) %>%
+  summarise(m_rt = mean(w_rt))
 
 # transform variables to factors
-corrects$probe <- as.factor(corrects$probe)
-corrects$block <- as.factor(corrects$block)
+dat_for_mod$probe <- as.factor(dat_for_mod$probe)
+dat_for_mod$block <- as.factor(dat_for_mod$block)
 
-# setup and fit the model
-rt_mod <- lmer(data = corrects, w_rt ~ block * probe + (1|subject),
-               contrasts = list(probe = 'contr.sum', block = 'contr.sum'))
-# anova table
-Anova(rt_mod, test = 'F', type = 'III')
+rt_mod <- lmer(data = dat_for_mod,
+               m_rt ~ block * probe + (1 |subject),
+               contrasts = list(probe = 'contr.sum',
+                                block = 'contr.sum'))
+# anova for model
+rt_anova <- car::Anova(rt_mod, test = 'F', type = 'III')
+# semi-partial R-squared for predictors
+spr2 <- spR2(rt_anova)
+
+# create a teble of the model summary
+tab_model(rt_mod, digits = 3,
+          file = '../data/derivatives/results/tables/rt_model.html',
+          pred.labels = c('(Intercept)',
+                          'Block 1',
+                          'AX', 'AY', 'BX',
+                          'Block 1 * AX',
+                          'Block 1 * AY',
+                          'Block 1 * BX'))
+
+# create a teble of the model anova
+tab_df(title = 'Anova RT Model',
+       file = '../data/derivatives/results/tables/anova_rt_mod.html',
+       cbind(row.names(rt_anova),
+             as.data.frame(rt_anova),
+             c(NA, spr2)), digits = 3)
+
+# 5) interaction analysis for rt data -----------------------------------------
+# this section requires the following packages
+getPacks(c('emmeans', 'ggplot2', 'dplyr',  'tidyr'))
+
+# levels of the probe variable by block (e.g. AX in block 0 = AX 0)
+probe_levels <- c('AX 0', 'AY 0', 'BX 0', 'BY 0',
+                  'AX 1', 'AY 1', 'BX 1', 'BY 1')
+
+# compute estimated marginal means
+rt_means <- emmeans(rt_mod, ~ probe * block)
+# compute significance of pairwise contrasts
+pwpm(rt_means, adjust = 'mvt', flip = TRUE)
+
+# prepare pairwise data for plot
+rt_means_df <- as.data.frame(rt_means)
+rt_means_df <- rt_means_df %>%
+  arrange(block) %>%
+  mutate(var1 = paste(probe, block, sep = ' '),
+         var2 = paste(probe, block, sep = ' '))
+
+# reorder levels
+rt_means_df$var1 <- factor(rt_means_df$var1,
+                           levels = probe_levels)
+rt_means_df$var2 <- factor(rt_means_df$var2,
+                           levels = probe_levels)
+
+# model variance estimates and residual degrees of freedom
+mod_var <- VarCorr(rt_mod)
+totSD <- sqrt(sum(as.data.frame(mod_var)$vcov))
+edf <- df.residual(rt_mod)
+
+# compute effect sizes for the pairwise contrasts
+probe_means <- emmeans(rt_mod, ~ probe)
+es_probes <- eff_size(probe_means, sigma = totSD, edf = edf); es_probes
+
+block_means <- emmeans(rt_mod, ~ block)
+es_block <- eff_size(block_means, sigma = totSD, edf = edf); es_block
+
+es <- eff_size(rt_means, sigma = totSD, edf = edf)
+es <- as.data.frame(es)
+es <- es %>%
+  separate(contrast, into = c('var1', 'var2'), sep = ' - ') %>%
+  mutate(var1 = gsub(var1, pattern = ',', replacement = ' '),
+         var2 = gsub(var2, pattern = ',', replacement = ' '))
+# reorder levels
+es$var1 <- factor(es$var1, levels = probe_levels)
+es$var2 <- factor(es$var2, levels = probe_levels)
+
+# create the plot
+pw_rt_plot <- ggplot(rt_means_df, aes(var1, var2)) +
+  geom_tile(fill = 'white') +
+  geom_text(aes(label = round(emmean, 2)), size = 5,
+            vjust = -.05) +
+  geom_text(aes(label = paste(round(lower.CL, 2),
+                              round(upper.CL, 2),
+                              sep = ' - ')),
+            vjust = 2.5, size = 3.25) +
+  geom_tile(data = es, aes(var1, var2, fill=effect.size),
+            colour = 'white', size = 0.8) +
+  # scale_fill_viridis(option = 'B', limits = c(-0.5, 0.5)) +
+  scale_fill_distiller(palette = "RdBu", limits = c(-5.0, 5.0)) +
+  geom_segment(aes(x = -Inf, y = 'AX 0', xend = -Inf, yend = 'BY 1'),
+               color = 'black', size = rel(0.5), linetype = 1) +
+  geom_segment(aes(x = 'AX 0', y = -Inf, xend = 'BY 1', yend = -Inf),
+               color = 'black', size = rel(0.5), linetype = 1) +
+  labs(x = 'Trial type by block', y = 'Trial type by block',
+       fill = "Difference (Cohen's D)") +
+  theme(axis.title.x = element_text(color = 'black', size = 15,
+                                    margin = margin(t = 10)),
+        axis.title.y= element_text(color = 'black', size = 15,
+                                   margin = margin(r = 10)),
+        axis.text = element_text(color = 'black', size = 12),
+        panel.background = element_rect(fill = 'gray95'),
+        strip.text = element_blank(),
+        strip.background = element_blank(),
+        legend.position='bottom',
+        panel.spacing = unit(1, "lines")) +
+  coord_flip()
+ggsave(filename = '../data/derivatives/results/figures/pairwise_rt_plot.pdf',
+       plot = pw_rt_plot, width = 6.5, height = 7)

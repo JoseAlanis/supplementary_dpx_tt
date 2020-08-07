@@ -20,7 +20,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mne.stats.cluster_level import _setup_connectivity, _find_clusters
 from mne.channels import make_1020_channel_selections, find_ch_connectivity
 from mne.evoked import EvokedArray
-from mne import read_epochs, grand_average, combine_evoked, find_layout
+from mne import read_epochs, grand_average
 
 from config import subjects, fname
 
@@ -37,7 +37,8 @@ cluster_H0 = np.load(fname.results + '/cluster_H0_10000b_2t.npy')
 # plt.hist(f_H0)
 
 # also load individual beta coefficients
-betas = np.load(fname.results + '/subj_betas_cue2.npy')
+betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
+r2 = np.load(fname.results + '/subj_r2_cue_m250.npy')
 
 ###############################################################################
 # 1) import epochs to use as template
@@ -51,21 +52,23 @@ input_file = fname.output(subject=subjects[0],
                           file_type='epo.fif')
 cue_epo = read_epochs(input_file, preload=True)
 cue_epo = cue_epo['Correct A', 'Correct B'].copy()
+cue_epo_nb = cue_epo.copy().crop(tmin=-0.250, tmax=2.450)
 cue_epo = cue_epo.apply_baseline(baseline).crop(tmin=-0.300)
 
 # save the generic info structure of cue epochs (i.e., channel names, number of
 # channels, etc.).
-epochs_info = cue_epo.info
+epochs_info = cue_epo_nb.info
 n_channels = len(epochs_info['ch_names'])
-n_times = len(cue_epo.times)
-times = cue_epo.times
-tmin = cue_epo.tmin
+n_times = len(cue_epo_nb.times)
+times = cue_epo_nb.times
+tmin = cue_epo_nb.tmin
 
 # split channels into ROIs for results section
 selections = make_1020_channel_selections(epochs_info, midline='12z')
 
 # placeholder for results
 betas_evoked = dict()
+r2_evoked = dict()
 
 # ###############################################################################
 # 2) loop through subjects and extract betas
@@ -74,10 +77,15 @@ for n_subj, subj in enumerate(subjects):
     subj_beta = subj_beta.reshape((n_channels, n_times))
     betas_evoked[str(subj)] = EvokedArray(subj_beta, epochs_info, tmin)
 
+    subj_r2 = r2[n_subj, :]
+    subj_r2 = subj_r2.reshape((n_channels, n_times))
+    r2_evoked[str(subj)] = EvokedArray(subj_r2, epochs_info, tmin)
+
 effect_of_cue = grand_average([betas_evoked[str(subj)] for subj in subjects])
+cue_r2 = grand_average([r2_evoked[str(subj)] for subj in subjects])
 
 ###############################################################################
-# 3) Plot beta weight fo effect of condition
+# 3) Plot beta weights for the effect of condition
 
 # arguments fot the time-series maps
 ts_args = dict(gfp=False,
@@ -95,8 +103,8 @@ topomap_args = dict(sensors=False,
                     average=0.05,
                     extrapolate='head')
 
+# create plot
 title = 'Regression coefficients (B - A, 64 EEG channels)'
-
 fig = effect_of_cue.plot_joint(ttp,
                                ts_args=ts_args,
                                topomap_args=topomap_args,
@@ -104,16 +112,16 @@ fig = effect_of_cue.plot_joint(ttp,
                                show=False)
 fig.axes[-1].texts[0]._fontproperties._size = 12.0  # noqa
 fig.axes[-1].texts[0]._fontproperties._weight = 'bold'  # noqa
-fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-fig.axes[0].set_yticks(list(np.arange(-6, 6.5, 3)), minor=False)
-fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
-                    color='black', linestyle='dashed', linewidth=.8)
-fig.axes[0].axvline(x=0, ymin=-6, ymax=6,
-                    color='black', linestyle='dashed', linewidth=.8)
+fig.axes[0].set_xticks(list(np.arange(-0.25, 2.55, 0.25)), minor=False)
+fig.axes[0].set_yticks(list(np.arange(-6.0, 6.5, 3.0)), minor=False)
+fig.axes[0].axhline(y=0.0, xmin=-0.5, xmax=2.5,
+                    color='black', linestyle='dashed', linewidth=0.8)
+fig.axes[0].axvline(x=0.0, ymin=-6.0, ymax=6.0,
+                    color='black', linestyle='dashed', linewidth=0.8)
 fig.axes[0].spines['top'].set_visible(False)
 fig.axes[0].spines['right'].set_visible(False)
-fig.axes[0].spines['left'].set_bounds(-6, 6)
-fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
+fig.axes[0].spines['left'].set_bounds(-6.0, 6.0)
+fig.axes[0].spines['bottom'].set_bounds(-0.25, 2.5)
 fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
 w, h = fig.get_size_inches()
 fig.set_size_inches(w * 1.15, h * 1.15)
@@ -121,7 +129,53 @@ fig_name = fname.figures + '/Evoked_average_betas.pdf'
 fig.savefig(fig_name, dpi=300)
 
 ###############################################################################
-# 7) Estimate t-test based on original condition betas
+# 4) Plot beta weights for the effect of condition
+
+# arguments fot the time-series maps
+ts_args = dict(gfp=False,
+               time_unit='s',
+               unit=False,
+               ylim=dict(eeg=[-0.005, 0.06]),
+               xlim=[-0.25, 2.5])
+
+# times to plot
+ttp = [0.20, 0.35, 0.55, 0.70, 1.00, 2.35]
+
+# arguments fot the topographical maps
+topomap_args = dict(cmap='magma_r',
+                    scalings=dict(eeg=1),
+                    sensors=False,
+                    time_unit='s',
+                    vmin=0.0, vmax=0.05,
+                    average=0.05,
+                    extrapolate='head')
+
+# create R-squared plot
+title = 'Proportion of variance explained by cue type'
+fig = cue_r2.plot_joint(ttp,
+                        ts_args=ts_args,
+                        topomap_args=topomap_args,
+                        title=title,
+                        show=False)
+fig.axes[-1].texts[0]._fontproperties._size = 12.0  # noqa
+fig.axes[-1].texts[0]._fontproperties._weight = 'bold'  # noqa
+fig.axes[0].set_xticks(list(np.arange(-0.25, 2.55, 0.25)), minor=False)
+fig.axes[0].set_yticks(list(np.arange(0.0, 0.065, 0.03)), minor=False)
+fig.axes[0].axvline(x=0.0, ymin=0.0, ymax=1,
+                    color='black', linestyle='dashed', linewidth=.8)
+fig.axes[0].spines['top'].set_visible(False)
+fig.axes[0].spines['right'].set_visible(False)
+fig.axes[0].spines['left'].set_bounds(0.0, 0.06)
+fig.axes[0].spines['bottom'].set_bounds(-0.25, 2.5)
+fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
+fig.axes[0].set_ylabel('Average R-squared')
+w, h = fig.get_size_inches()
+fig.set_size_inches(w * 1.15, h * 1.15)
+fig_name = fname.figures + '/Evoked_average_R2.pdf'
+fig.savefig(fig_name, dpi=300)
+
+###############################################################################
+# 5) Estimate t-test based on original condition betas
 se = betas.std(axis=0) / np.sqrt(betas.shape[0])
 t_vals = betas.mean(axis=0) / se
 f_vals = t_vals ** 2
@@ -140,7 +194,7 @@ sig_mask = f_vals > np.quantile(f_H0, [.99], axis=0)
 cluster_thresh = np.quantile(cluster_H0, [0.9999], axis=0)
 
 # ###############################################################################
-# 8) Plot results
+# 6) Plot results
 
 # back projection to channels x time points
 t_vals = t_vals.reshape((n_channels, n_times))
@@ -220,8 +274,15 @@ for s, selection in enumerate(selections):
 # save figure
 fig.savefig(fname.figures + '/T-map_image_effect_of_cue.pdf', dpi=300)
 
+group_t['effect of cue (B-A)'].plot_topomap(times=[0.20, 0.50, 1.4],
+                                            average=0.1,
+                                            units=None,
+                                            scalings=dict(eeg=1),
+                                            outlines='head',
+                                            sensors=False)
+
 # ###############################################################################
-# 8) Plot results
+# 7) Plot results
 
 # set up channel adjacency matrix
 n_tests = betas.shape[1]
@@ -276,7 +337,7 @@ for s, selection in enumerate(selections):
 
     effect_of_cue.plot_image(xlim=[-0.25, 2.5],
                              picks=picks,
-                             clim=dict(eeg=[-6.0, 6.0]),
+                             clim=dict(eeg=[-5.0, 5.0]),
                              colorbar=False,
                              axes=ax[s],
                              mask=cl_sig_mask,
@@ -312,11 +373,11 @@ for s, selection in enumerate(selections):
 
     colormap = cm.get_cmap('RdBu_r')
     orientation = 'vertical'
-    norm = Normalize(vmin=-6.0, vmax=6.0)
+    norm = Normalize(vmin=-5.0, vmax=5.0)
     divider = make_axes_locatable(ax[s])
     cax = divider.append_axes('right', size='2.5%', pad=0.2)
     cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
-                        ticks=[-6.0, 0, 6.0], norm=norm,
+                        ticks=[-5.0, 0, 5.0], norm=norm,
                         label=r'Effect of cue (ß-weight B-A)',
                         orientation=orientation)
     cbar.outline.set_visible(False)

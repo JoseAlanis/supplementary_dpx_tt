@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 
 from mne import read_epochs
 from mne.decoding import Vectorizer, get_coef
@@ -55,8 +56,12 @@ generic = cues['subj_%s' % subjects[0]].copy()
 # save the generic info structure of cue epochs (i.e., channel names, number of
 # channels, etc.).
 epochs_info = generic.info
+
+# only use times > -0.25
+times_to_use = (generic.times >= -0.25) & (generic.times <= 2.45)
+times = generic.times[times_to_use]
+n_times = len(times)
 n_channels = len(epochs_info['ch_names'])
-n_times = len(generic.times)
 
 # subjects
 subjects = list(cues.keys())
@@ -72,6 +77,9 @@ n_predictors = len(predictors)
 betas = np.zeros((len(cues.values()),
                   n_channels * n_times))
 
+r_squared = np.zeros((len(cues.values()),
+                      n_channels * n_times))
+
 ###############################################################################
 # 4) Fit linear model for each subject
 for subj_ind, subj in enumerate(cues):
@@ -86,10 +94,12 @@ for subj_ind, subj in enumerate(cues):
     # dummy code cue variable
     dummies = pd.get_dummies(design[predictors], drop_first=True)
     design = pd.concat([design.drop(predictors, axis=1), dummies], axis=1)
+    design.cue_B = design.cue_B - design.cue_B.unique().mean()
 
     # 4.2) vectorise channel data for linear regression
     # data to be analysed
     dat = cues[subj].get_data()
+    dat = dat[:, :, times_to_use]
     Y = Vectorizer().fit_transform(dat)
 
     # 4.3) fit linear model with sklearn's LinearRegression
@@ -100,12 +110,18 @@ for subj_ind, subj in enumerate(cues):
     # extract betas
     coefs = get_coef(linear_model, 'coef_')
 
+    # 4.5) extract model r_squared
+    r2 = r2_score(Y, linear_model.predict(design),
+                  multioutput='raw_values')
+
     # save results
     for pred_i, predictor in enumerate(predictors):
 
         # extract relevant dimension (in case of multiple predictors)
         betas[subj_ind, :] = coefs[:, pred_i]
+        r_squared[subj_ind, :] = r2
 
 ###############################################################################
 # 5) Save subject-level results to disk
-np.save(fname.results + '/subj_betas_cue.npy', betas)
+np.save(fname.results + '/subj_betas_cue_m250.npy', betas)
+np.save(fname.results + '/subj_r2_cue_m250.npy', r_squared)

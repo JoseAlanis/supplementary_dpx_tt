@@ -111,23 +111,27 @@ fname = FileNames()
 # directories to use for input and output
 fname.add('data_dir', data_dir)
 fname.add('bids_data', '{data_dir}/sub-{subject:03d}')
-fname.add('subject_demographics', '{data_dir}/subject_data/subject_demographics.tsv')  # noqa: E501
+fname.add('subject_demographics',
+          '{data_dir}/subject_data/subject_demographics.tsv')
 fname.add('sourcedata_dir', '{data_dir}/sourcedata')
 fname.add('derivatives_dir', '{data_dir}/derivatives')
 fname.add('reports_dir', '{derivatives_dir}/reports')
 fname.add('results', '{derivatives_dir}/results')
 fname.add('rt', '{results}/rt')
 fname.add('figures', '{results}/figures')
+fname.add('tables', '{results}/tables')
 
 # The paths for data file input
-fname.add('source', '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
+fname.add('source',
+          '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
 
 
 # The paths that are produced by the analysis steps
 def output_path(path, processing_step, subject, file_type):
     path = op.join(path.derivatives_dir, processing_step, 'sub-%03d' % subject)
     os.makedirs(path, exist_ok=True)
-    return op.join(path, 'sub-%03d-%s-%s' % (subject, processing_step, file_type))  # noqa: E501
+    return op.join(path,
+                   'sub-%03d-%s-%s' % (subject, processing_step, file_type))
 
 
 # The full path for data file output

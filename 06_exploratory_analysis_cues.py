@@ -89,7 +89,7 @@ plot_compare_evokeds(evokeds,
                      linestyles={'Cue A': '-', 'Cue B': '--'},
                      styles={'Cue A': {"linewidth": 2.0},
                              'Cue B': {"linewidth": 2.0}},
-                     ylim=dict(eeg=[-0.1, 4]),
+                     ylim=dict(eeg=[-0.1, 4.0]),
                      colors={'Cue A': 'k', 'Cue B': 'crimson'},
                      show=False)
 ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)

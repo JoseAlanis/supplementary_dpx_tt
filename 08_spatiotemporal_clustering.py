@@ -13,20 +13,16 @@ import numpy as np
 
 from mne.stats.cluster_level import _setup_connectivity, _find_clusters
 from mne.channels import find_ch_connectivity
-from mne.viz import plot_topomap, plot_compare_evokeds, tight_layout
 from mne import read_epochs
 
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat
 
 # load individual beta coefficients
-betas = np.load(fname.results + '/subj_betas_cue2.npy')
+betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
 
 ###############################################################################
 # 1) import epochs to use as template
-
-# baseline to be applied
-baseline = (-0.300, -0.050)
 
 # import the output from previous processing step
 input_file = fname.output(subject=subjects[0],
@@ -34,7 +30,7 @@ input_file = fname.output(subject=subjects[0],
                           file_type='epo.fif')
 cue_epo = read_epochs(input_file, preload=True)
 cue_epo = cue_epo['Correct A', 'Correct B'].copy()
-cue_epo = cue_epo.apply_baseline(baseline).crop(tmin=-0.300)
+cue_epo = cue_epo.crop(tmin=-0.25, tmax=2.45)
 
 # save the generic info structure of cue epochs (i.e., channel names, number of
 # channels, etc.).
@@ -42,7 +38,6 @@ epochs_info = cue_epo.info
 n_channels = len(epochs_info['ch_names'])
 n_times = len(cue_epo.times)
 times = cue_epo.times
-tmin = cue_epo.tmin
 
 ###############################################################################
 # 2) compute bootstrap confidence interval for phase-coherence betas and
@@ -115,6 +110,6 @@ for i in range(boot):
 # 3) Save results of bootstrap procedure
 
 # save f-max distribution
-np.save(fname.results + '/f_H0_10000b_2t.npy', f_H0)
+np.save(fname.results + '/f_H0_10000b_2t_m250.npy', f_H0)
 # save cluster mass distribution
-np.save(fname.results + '/cluster_H0_10000b_2t.npy', cluster_H0)
+np.save(fname.results + '/cluster_H0_10000b_2t_m250.npy', cluster_H0)
