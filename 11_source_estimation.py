@@ -10,7 +10,6 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
-
 import os.path as op
 
 import pickle
