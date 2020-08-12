@@ -1,5 +1,5 @@
 # Title     : Analysis of RT
-# Objective :
+# Objective : Test effect of cue-probe incongrunecy
 # Created by: Jose C. Garcia Alanis
 # Created on: 23.07.20
 # R version : 4.0.2 (2020-06-22), Taking Off Again
@@ -84,38 +84,47 @@ corrects %>%
 
 # plot distribution of reaction time
 getPacks(c('ggplot2', 'viridis'))
-rt_plot <- ggplot(corrects, aes(x = rt, fill = probe, colour = probe)) +
-  geom_density(alpha = 0.5, aes(y = ..scaled..)) +
-  facet_wrap(~ probe, scales = 'free', nrow = 4) +
+pd <- position_dodge(1.15)
+rt_plot <- ggplot(corrects,
+                  aes(x = w_rt, fill = probe, colour = probe)) +
+  geom_density(alpha = 0.25) +
+  # facet_wrap(~ probe, scales = 'free', nrow = 4) +
   labs(x = 'RT (sec)',
-       y = 'Density distribution',
-       fill = 'trial type',
-       colour = 'trial type') +
-  scale_y_continuous(limits = c(0.0, 1.25), breaks = seq(0.0 , 1.0, 0.5)) +
-  scale_x_continuous(limits = c(0.0, 1.0)) +
+       y = 'Density',
+       fill = 'Cue-Probe',
+       colour = 'Cue-Probe') +
+  scale_y_continuous(limits = c(0.0, 8.75),
+                     breaks = seq(0.0, 8.0, 2.0)) +
+  scale_x_continuous(limits = c(0.0, 0.8)) +
   scale_fill_viridis(discrete = T) +
   scale_color_viridis(discrete = T) +
-  geom_segment(aes(x = -Inf, y = 0.0, xend = -Inf, yend = 1.0),
+  geom_segment(aes(x = -Inf, y = 0.0, xend = -Inf, yend = 8.0),
                color = 'black', size = rel(0.5), linetype = 1) +
-  geom_segment(aes(x = 0.0, y = -Inf, xend = 1.0, yend = -Inf),
+  geom_segment(aes(x = 0.0, y = -Inf, xend = 0.8, yend = -Inf),
                color = 'black', size = rel(0.5), linetype = 1) +
   theme(axis.title.x = element_text(color = 'black', size = 12,
                                     margin = margin(t = 10)),
         axis.title.y= element_text(color = 'black', size = 12,
                                    margin = margin(r = 10)),
-        axis.text = element_text(color = 'black'),
+        axis.text = element_text(color = 'black', size = 10),
         panel.background = element_rect(fill = 'gray95'),
         strip.text = element_blank(),
         strip.background = element_blank(),
         legend.position='bottom',
+        legend.title = element_text(size = 10, face = 'bold'),
+        legend.text = element_text(size = 10),
         panel.spacing = unit(1, "lines")) +
-  geom_density(data = corrects, aes(x = w_rt, y = ..scaled..),
-               alpha = 0.0, color = 'black', linetype = 1) +
-  geom_boxplot(data = corrects, aes(w_rt, y = 1.2),
-               color = 'black', width = 0.1, outlier.size = 0.5, alpha = 0.5,
-               show.legend = FALSE)
+  # geom_density(data = corrects, aes(x = w_rt),
+  #              alpha = 0.0, color = 'black', linetype = 1) +
+  geom_boxplot(data = corrects,
+               aes(rt, y = 8.0),
+               color = 'black',
+               width = 0.75,
+               outlier.size = 0.25,
+               alpha = 0.5, position = pd,
+               show.legend = FALSE); rt_plot
 ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
-       plot = rt_plot, width = 4, height = 8)
+       plot = rt_plot, width = 5, height = 4)
 
 
 # 4) model rt data -------------------------------------------------------------
@@ -126,7 +135,7 @@ getPacks(c('lme4', 'car',
            'tidyr'))
 
 # summarise to the level of trial types by block
-dat_for_mod <- corrects %>%
+corrects %>%
   group_by(subject, block, probe) %>%
   summarise(m_rt = mean(w_rt))
 
