@@ -97,7 +97,8 @@ for subj in subjects:
                                   trans=trans, src=src, bem=bem,
                                   meg=False, eeg=True,
                                   mindist=5.0, n_jobs=n_jobs)
-    fwd_b = make_forward_solution(b_epo.info, trans=trans, src=src, bem=bem,
+    fwd_b = make_forward_solution(b_epo.info,
+                                  trans=trans, src=src, bem=bem,
                                   meg=False, eeg=True,
                                   mindist=5.0, n_jobs=n_jobs)
 
@@ -105,10 +106,10 @@ for subj in subjects:
     filters_a = make_lcmv(evoked_a.info,
                           fwd_a, data_cov_a, reg=0.05,
                           noise_cov=noise_cov_a, pick_ori='max-power',
-                          weight_norm='unit-noise-gain', rank=None)
+                          weight_norm='nai', rank=None)
     filters_b = make_lcmv(evoked_b.info, fwd_b, data_cov_b, reg=0.05,
                           noise_cov=noise_cov_b, pick_ori='max-power',
-                          weight_norm='unit-noise-gain', rank=None)
+                          weight_norm='nai', rank=None)
 
     # delete forward solutions to free memory space
     del fwd_a, fwd_b
