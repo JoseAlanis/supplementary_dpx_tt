@@ -380,6 +380,15 @@ metadata = {'block': block,
             'rt': rt}
 metadata = pd.DataFrame(metadata)
 
+# save RT measures for later analyses
+rt_data = metadata.copy()
+rt_data = rt_data.assign(subject=subject)
+
+# save to disk
+rt_data.to_csv(op.join(fname.rt, 'sub-%s-rt.tsv' % subject),
+               sep='\t',
+               index=False)
+
 ###############################################################################
 # 6) Extract the epochs
 
@@ -468,16 +477,3 @@ with open_report(fname.report(subject=subject)[0]) as report:
                                 replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)
-
-###############################################################################
-# 10) RT measures
-
-# finally, extract epochs metadata (reaction time, etc.) and save them
-# for later analyses
-rt_data = cue_epochs.metadata
-rt_data = rt_data.assign(subject=subject)
-
-# save to disk
-rt_data.to_csv(op.join(fname.rt, 'sub-%s-rt.tsv' % subject),
-               sep='\t',
-               index=False)
