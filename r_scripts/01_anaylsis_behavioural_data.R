@@ -18,7 +18,7 @@ host <- Sys.info()
 if (host['nodename'] == "josealanis-desktop") {
 
   # defaut path in project structure
-  path_to_rt <- '../data/derivatives/results/rt/'
+  path_to_rt <- '../data/derivatives/results/rt'
 
 } else {
 

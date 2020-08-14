@@ -182,7 +182,7 @@ for channel in channels:
     threshold = 10.0
     T_obs, clusters, cluster_p_values, H0 = \
         permutation_cluster_test([power_b[channel], power_a[channel]],
-                                 n_permutations=2000, threshold=threshold,
+                                 n_permutations=10000, threshold=threshold,
                                  tail=0, n_jobs=n_jobs, out_type='mask')
 
     # Create new stats image with only significant clusters
@@ -238,7 +238,9 @@ for channel in channels:
 
         # adjust borders
         fig.subplots_adjust(
-            left=0.10, right=1.0, bottom=0.15, top=0.90, wspace=0.3, hspace=0.25)
-        fig_name = fname.figures + '/%s_TFR_clusters_BA_p%s.pdf' % (channel, a_lev)
+            left=0.10, right=1.0, bottom=0.15, top=0.90,
+            wspace=0.3, hspace=0.25)
+        fig_name = fname.figures + '/%s_TFR_clusters_BA_p%s.pdf' % (channel,
+                                                                    a_lev)
         # save plot
         fig.savefig(fig_name, dpi=300)
