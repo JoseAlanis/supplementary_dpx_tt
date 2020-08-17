@@ -120,6 +120,7 @@ fname.add('results', '{derivatives_dir}/results')
 fname.add('rt', '{results}/rt')
 fname.add('figures', '{results}/figures')
 fname.add('tables', '{results}/tables')
+fname.add('rois', '{results}/rois')
 
 # The paths for data file input
 fname.add('source',
