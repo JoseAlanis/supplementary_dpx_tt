@@ -64,6 +64,13 @@ threshold = dict(start=0.2, step=0.2)
 
 # run bootstrap for regression coefficients
 for i in range(boot):
+
+    # log progress
+    print(LoggingFormat.PURPLE +
+          LoggingFormat.BOLD +
+          'Running bootstrap sample %s of %s' % (i, boot) +
+          LoggingFormat.END)
+
     # extract random subjects from overall sample
     resampled_subjects = random.choice(range(betas.shape[0]),
                                        betas.shape[0],
@@ -103,8 +110,6 @@ for i in range(boot):
         cluster_H0[i] = cluster_stats.max()
     else:
         cluster_H0[i] = np.nan
-
-    print('find clusters for bootstrap sample %i' % i)
 
 ##############################################################################
 # 3) Save results of bootstrap procedure
