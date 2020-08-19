@@ -20,7 +20,7 @@ from matplotlib.colors import Normalize
 
 from mne import read_epochs, combine_evoked, grand_average
 from mne.channels import make_1020_channel_selections
-from mne.viz import plot_compare_evokeds
+from mne.viz import plot_compare_evokeds, plot_brain_colorbar
 
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat
@@ -38,6 +38,10 @@ baseline = (-0.300, -0.050)
 ###############################################################################
 # 1) loop through subjects and compute ERPs for A and B cues
 for subj in subjects:
+
+    # excludes subj 51
+    if subj == 51:
+        continue
 
     # log progress
     print(LoggingFormat.PURPLE +
@@ -93,6 +97,8 @@ plot_compare_evokeds(evokeds,
                      colors={'Cue A': 'k', 'Cue B': 'crimson'},
                      show=False)
 ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)
+ax.set_xticklabels(list(np.arange(-250, 2550, 250)))
+ax.set_xlabel('Time (ms)')
 ax.set_yticks(list(np.arange(0, 5, 1)), minor=False)
 # annotate the gpf plot and tweak it's appearance
 for i, val in enumerate(gfp_times.values()):
@@ -126,7 +132,7 @@ ts_args = dict(gfp=False,
 ttp = [0.11, 0.18, 0.30, 0.50, 0.68, 0.90, 2.35]
 # arguments fot the topographical maps
 topomap_args = dict(sensors=False,
-                    time_unit='s',
+                    time_unit='ms',
                     vmin=8, vmax=-8,
                     average=0.05,
                     extrapolate='head')
@@ -142,6 +148,8 @@ for evoked in evokeds:
     fig.axes[-1].texts[0]._fontproperties._size=12.0  # noqa
     fig.axes[-1].texts[0]._fontproperties._weight='bold'  # noqa
     fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    fig.axes[0].set_xticklabels(list(np.arange(-250, 2550, 250)))
+    fig.axes[0].set_xlabel('Time (ms)')
     fig.axes[0].set_yticks(list(np.arange(-8, 8.5, 4)), minor=False)
     fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
                         color='black', linestyle='dashed', linewidth=.8)
@@ -166,7 +174,7 @@ ab_diff = combine_evoked([ga_b_cue, -ga_a_cue], weights='equal')
 # make channel ROIs for easier interpretation of the plot
 selections = make_1020_channel_selections(ga_a_cue.info, midline='12z')
 
-fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(20, 5))
+fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(23, 5.5))
 for s, selection in enumerate(selections):
     picks = selections[selection]
 
@@ -194,6 +202,8 @@ for s, selection in enumerate(selections):
                      labelpad=10.0, fontsize=11.0, fontweight='bold')
 
     ax[s].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    ax[s].set_xticklabels(list(np.arange(-250, 2550, 250)), rotation=45)
+    ax[s].set_xlabel('Time (ms)')
     ax[s].set_yticks(np.arange(len(picks)), minor=False)
     labels = [ga_a_cue.ch_names[i] for i in picks]
     ax[s].set_yticklabels(labels, minor=False)
@@ -211,9 +221,9 @@ for s, selection in enumerate(selections):
     orientation = 'vertical'
     norm = Normalize(vmin=-5.0, vmax=5.0)
     divider = make_axes_locatable(ax[s])
-    cax = divider.append_axes('right', size='2.5%', pad=0.2)
+    cax = divider.append_axes('right', size='3%', pad=0.2)
     cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
-                        ticks=[-5.0, 0., 5.0], norm=norm,
+                        ticks=[-5.0, -2.5, 0., 2.5, 5.0], norm=norm,
                         label=r'Difference B-A ($\mu$V)',
                         orientation=orientation)
     cbar.outline.set_visible(False)
@@ -228,24 +238,39 @@ for s, selection in enumerate(selections):
 # save figure
 fig.savefig(fname.figures + '/Diff_A-B_image.pdf', dpi=300)
 
-# plot topographie of the difference wave
+# ** plot topography of the difference wave **
+# variables for plot
 ttp = [0.20, 0.30, 0.60, 0.80, 1.0, 1.5, 2.30]
-fig, ax = plt.subplots(nrows=1, ncols=len(ttp), figsize=(15, 2.5))
+lims = [-5.0, 0.0, 5.0]
+clim = dict(kind='value', lims=lims)
+
+# create plot
+fig = plt.figure(figsize=(15, 2.0))
+axes = [plt.subplot2grid((6, 23), (0, 0), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (0, 3), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (0, 6), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (0, 9), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (0, 12), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (0, 15), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (0, 18), rowspan=6, colspan=3),
+        plt.subplot2grid((6, 23), (1, 22), rowspan=4, colspan=1)]
 for ti, t in enumerate(ttp):
     ab_diff.plot_topomap(times=t,
                          average=0.05,
                          vmin=-5, vmax=5,
                          extrapolate='head',
                          colorbar=False,
-                         axes=ax[ti],
+                         axes=axes[ti],
                          show=False)
+plot_brain_colorbar(axes[-1], clim, 'RdBu_r', label='Difference Cue B - Cue A',
+                    bgcolor='darkblue')
 fig.savefig(fname.figures + '/Diff_Topomaps.pdf', dpi=300)
 
 ###############################################################################
 # 6) Plot ERPs for individual electrodes of interest
 cis = within_subject_cis([a_erps, b_erps])
 
-for electrode in ['FCz', 'Pz', 'PO8']:
+for electrode in ['FCz', 'Cz', 'C1', 'Pz', 'Oz', 'PO8', 'PO7']:
     pick = ga_a_cue.ch_names.index(electrode)
 
     fig, ax = plt.subplots(figsize=(8, 4))
