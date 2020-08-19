@@ -10,7 +10,7 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 License: BSD (3-clause)
 """
 import numpy as np
-import pandas as pd
+import patsy
 
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
@@ -42,6 +42,10 @@ for subj in subjects:
                               processing_step='cue_epochs',
                               file_type='epo.fif')
     cue_epo = read_epochs(input_file, preload=True)
+
+    # excludes subj 51
+    if subj == 51:
+        continue
 
     # extract a and b epochs (only those with correct responses)
     # and apply baseline
@@ -91,10 +95,14 @@ for subj_ind, subj in enumerate(cues):
     # only keep predictor columns
     design = metadata[predictors]
 
-    # dummy code cue variable
-    dummies = pd.get_dummies(design[predictors], drop_first=True)
-    design = pd.concat([design.drop(predictors, axis=1), dummies], axis=1)
-    design.cue_B = design.cue_B - design.cue_B.unique().mean()
+    # # dummy code cue variable
+    # dummies = pd.get_dummies(design[predictors], drop_first=True)
+    # design = pd.concat([design.drop(predictors, axis=1), dummies], axis=1)
+    # design.cue_B = design.cue_B - design.cue_B.unique().mean()
+
+    # create design matrix
+    design = patsy.dmatrix("cue", design,
+                           return_type='dataframe')
 
     # 4.2) vectorise channel data for linear regression
     # data to be analysed
@@ -103,7 +111,7 @@ for subj_ind, subj in enumerate(cues):
     Y = Vectorizer().fit_transform(dat)
 
     # 4.3) fit linear model with sklearn's LinearRegression
-    linear_model = LinearRegression(n_jobs=n_jobs)
+    linear_model = LinearRegression(n_jobs=n_jobs, fit_intercept=False)
     linear_model.fit(design, Y)
 
     # 4.4) extract the resulting coefficients (i.e., betas)
@@ -113,13 +121,17 @@ for subj_ind, subj in enumerate(cues):
     # 4.5) extract model r_squared
     r2 = r2_score(Y, linear_model.predict(design),
                   multioutput='raw_values')
+    # save model R-squared
+    r_squared[subj_ind, :] = r2
 
     # save results
-    for pred_i, predictor in enumerate(predictors):
-
-        # extract relevant dimension (in case of multiple predictors)
-        betas[subj_ind, :] = coefs[:, pred_i]
-        r_squared[subj_ind, :] = r2
+    for pred_i, predictor in enumerate(design.columns):
+        print(pred_i, predictor)
+        if 'Intercept' in predictor:
+            continue
+        elif 'cue' in predictor:
+            # extract cue beats
+            betas[subj_ind, :] = coefs[:, pred_i]
 
 ###############################################################################
 # 5) Save subject-level results to disk
