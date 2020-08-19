@@ -23,6 +23,8 @@ from mne.evoked import EvokedArray
 from mne import read_epochs, grand_average
 
 from config import subjects, fname
+# exclude subjects 51
+subjects = subjects[subjects != 51]
 
 ###############################################################################
 # 1) Load results of bootstrap procedure
