@@ -12,6 +12,8 @@ License: BSD (3-clause)
 """
 import numpy as np
 
+from scipy.stats import ttest_rel
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -26,6 +28,9 @@ from mne.viz import plot_compare_evokeds, plot_brain_colorbar
 from config import subjects, fname, LoggingFormat
 from stats import within_subject_cis
 
+# exclude subjects 51
+subjects = subjects[subjects != 51]
+
 # dicts for storing individual sets of epochs/ERPs
 a_cues = dict()
 b_cues = dict()
@@ -38,10 +43,6 @@ baseline = (-0.300, -0.050)
 ###############################################################################
 # 1) loop through subjects and compute ERPs for A and B cues
 for subj in subjects:
-
-    # excludes subj 51
-    if subj == 51:
-        continue
 
     # log progress
     print(LoggingFormat.PURPLE +
@@ -65,12 +66,37 @@ for subj in subjects:
     b_erps['subj_%s' % subj] = b_cues['subj_%s' % subj].average()
 
 ###############################################################################
-# 2) compute grand averages
+# 2) compare latency of peaks
+
+lat_a = []
+lat_b = []
+
+for subj in subjects:
+    _, la = a_erps['subj_%s' % subj].get_peak(tmin=0.12,
+                                              tmax=0.24,
+                                              mode='neg')
+    lat_a.append(la)
+
+    _, lb = b_erps['subj_%s' % subj].get_peak(tmin=0.12,
+                                              tmax=0.24,
+                                              mode='neg')
+    lat_b.append(lb)
+
+
+plt.hist(lat_a, 10, alpha = 0.5, label='Cue A')
+plt.hist(lat_b, 10, alpha = 0.5, label='Cue B')
+plt.legend(loc='upper left')
+plt.savefig(fname.figures + '/N170_peak_latency.pdf', dpi=300)
+
+ttest_rel(lat_a, lat_b)
+
+###############################################################################
+# 3) compute grand averages
 ga_a_cue = grand_average(list(a_erps.values()))
 ga_b_cue = grand_average(list(b_erps.values()))
 
 ###############################################################################
-# 3) plot global field power
+# 4) plot global field power
 gfp_times = {'t1': [0.07, 0.07],
              't2': [0.14, 0.10],
              't3': [0.24, 0.12],
@@ -121,7 +147,7 @@ fig.subplots_adjust(bottom=0.2)
 fig.savefig(fname.figures + '/GFP_evoked_cues.pdf', dpi=300)
 
 ###############################################################################
-# 4) plot condition ERPs
+# 5) plot condition ERPs
 # arguments fot the time-series maps
 ts_args = dict(gfp=False,
                time_unit='s',
@@ -166,7 +192,7 @@ for evoked in evokeds:
     fig.savefig(fig_name, dpi=300)
 
 ###############################################################################
-# 5) plot difference wave (Cue B - Cue A)
+# 6) plot difference wave (Cue B - Cue A)
 
 # compute difference wave
 ab_diff = combine_evoked([ga_b_cue, -ga_a_cue], weights='equal')
@@ -267,7 +293,7 @@ plot_brain_colorbar(axes[-1], clim, 'RdBu_r', label='Difference Cue B - Cue A',
 fig.savefig(fname.figures + '/Diff_Topomaps.pdf', dpi=300)
 
 ###############################################################################
-# 6) Plot ERPs for individual electrodes of interest
+# 7) Plot ERPs for individual electrodes of interest
 cis = within_subject_cis([a_erps, b_erps])
 
 for electrode in ['FCz', 'Cz', 'C1', 'Pz', 'Oz', 'PO8', 'PO7']:
