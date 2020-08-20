@@ -1,10 +1,11 @@
 """
-====================================================================
-Extract segments of data that where recorded during task performance
-====================================================================
+=================================
+Extract relevant segments of data
+=================================
 
-Segments that were recorded during the self-paced breaks (in between
-experimental blocks) will be dropped.
+Segments that were recorded during that where recorded during task performance
+are extracted and the self-paced breaks (in between experimental blocks) are
+dropped.
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
