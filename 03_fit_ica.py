@@ -1,7 +1,9 @@
 """
-================================================
+==============================
+Independent Component Analysis
+==============================
+
 Decompose EEG signal into independent components
-================================================
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
