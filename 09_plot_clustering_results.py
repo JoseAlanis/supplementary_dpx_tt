@@ -96,11 +96,11 @@ ts_args = dict(gfp=False,
                xlim=[-.25, 2.5])
 
 # times to plot
-ttp = [0.20, 0.35, 0.55, 0.70, 1.00, 2.35]
+ttp = [0.20, 0.35, 0.60, 0.70, 1.00, 1.25, 2.35]
 
 # arguments fot the topographical maps
 topomap_args = dict(sensors=False,
-                    time_unit='s',
+                    time_unit='ms',
                     vmin=7, vmax=-7,
                     average=0.05,
                     extrapolate='head')
@@ -116,6 +116,8 @@ fig.axes[-1].texts[0]._fontproperties._size = 12.0  # noqa
 fig.axes[-1].texts[0]._fontproperties._weight = 'bold'  # noqa
 fig.axes[0].set_xticks(list(np.arange(-0.25, 2.55, 0.25)), minor=False)
 fig.axes[0].set_yticks(list(np.arange(-6.0, 6.5, 3.0)), minor=False)
+fig.axes[0].set_xticklabels(list(np.arange(-250, 2550, 250)))
+fig.axes[0].set_xlabel('Time (ms)')
 fig.axes[0].axhline(y=0.0, xmin=-0.5, xmax=2.5,
                     color='black', linestyle='dashed', linewidth=0.8)
 fig.axes[0].axvline(x=0.0, ymin=-6.0, ymax=6.0,
@@ -141,13 +143,13 @@ ts_args = dict(gfp=False,
                xlim=[-0.25, 2.5])
 
 # times to plot
-ttp = [0.20, 0.35, 0.55, 0.70, 1.00, 2.35]
+ttp = [0.20, 0.35, 0.60, 0.70, 1.00, 1.25, 2.35]
 
 # arguments fot the topographical maps
 topomap_args = dict(cmap='magma_r',
                     scalings=dict(eeg=1),
                     sensors=False,
-                    time_unit='s',
+                    time_unit='ms',
                     vmin=0.0, vmax=0.05,
                     average=0.05,
                     extrapolate='head')
@@ -162,6 +164,8 @@ fig = cue_r2.plot_joint(ttp,
 fig.axes[-1].texts[0]._fontproperties._size = 12.0  # noqa
 fig.axes[-1].texts[0]._fontproperties._weight = 'bold'  # noqa
 fig.axes[0].set_xticks(list(np.arange(-0.25, 2.55, 0.25)), minor=False)
+fig.axes[0].set_xticklabels(list(np.arange(-250, 2550, 250)))
+fig.axes[0].set_xlabel('Time (ms)')
 fig.axes[0].set_yticks(list(np.arange(0.0, 0.065, 0.03)), minor=False)
 fig.axes[0].axvline(x=0.0, ymin=0.0, ymax=1,
                     color='black', linestyle='dashed', linewidth=.8)
@@ -208,7 +212,7 @@ group_t = dict()
 group_t['effect of cue (B-A)'] = EvokedArray(t_vals, epochs_info, tmin)
 
 # initialise plot
-fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(20, 5))
+fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(23, 5.5))
 
 # plot channel ROIs
 for s, selection in enumerate(selections):
@@ -216,7 +220,7 @@ for s, selection in enumerate(selections):
 
     group_t['effect of cue (B-A)'].plot_image(xlim=[-0.25, 2.5],
                                               picks=picks,
-                                              clim=dict(eeg=[-10, 10]),
+                                              clim=dict(eeg=[-12, 12]),
                                               colorbar=False,
                                               axes=ax[s],
                                               mask=sig_mask,
@@ -241,6 +245,8 @@ for s, selection in enumerate(selections):
                      labelpad=10.0, fontsize=11.0, fontweight='bold')
 
     ax[s].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    ax[s].set_xticklabels(list(np.arange(-250, 2550, 250)), rotation=45)
+    ax[s].set_xlabel('Time (ms)')
     ax[s].set_yticks(np.arange(len(picks)), minor=False)
     labels = [group_t['effect of cue (B-A)'].ch_names[i] for i in picks]
     ax[s].set_yticklabels(labels, minor=False)
@@ -256,11 +262,11 @@ for s, selection in enumerate(selections):
 
     colormap = cm.get_cmap('RdBu_r')
     orientation = 'vertical'
-    norm = Normalize(vmin=-10.0, vmax=10.0)
+    norm = Normalize(vmin=-12.0, vmax=12.0)
     divider = make_axes_locatable(ax[s])
     cax = divider.append_axes('right', size='2.5%', pad=0.2)
     cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
-                        ticks=[-10.0, 0., 10.0], norm=norm,
+                        ticks=[-12.0, -6.0, 0.0, 6.0, 12.0], norm=norm,
                         label=r'Effect of cue (T-value B-A)',
                         orientation=orientation)
     cbar.outline.set_visible(False)
@@ -276,12 +282,14 @@ for s, selection in enumerate(selections):
 # save figure
 fig.savefig(fname.figures + '/T-map_image_effect_of_cue.pdf', dpi=300)
 
-group_t['effect of cue (B-A)'].plot_topomap(times=[0.20, 0.50, 1.4],
-                                            average=0.1,
-                                            units=None,
-                                            scalings=dict(eeg=1),
-                                            outlines='head',
-                                            sensors=False)
+# # inspect topomaps
+# group_t['effect of cue (B-A)'].plot_topomap(times=[0.20, 0.50, 1.3],
+#                                             average=0.1,
+#                                             mask=sig_mask,
+#                                             units=None,
+#                                             scalings=dict(eeg=1),
+#                                             outlines='head',
+#                                             sensors=True)
 
 # ###############################################################################
 # 7) Plot results
