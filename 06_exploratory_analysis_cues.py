@@ -4,7 +4,7 @@ Exploratory analysis of cue epochs
 ==================================
 
 Compute descriptive statistics and exploratory analysis plots
-for cue locked epochs.
+for cue locked ERPs.
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
