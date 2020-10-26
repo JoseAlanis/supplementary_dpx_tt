@@ -122,9 +122,28 @@ fname.add('figures', '{results}/figures')
 fname.add('tables', '{results}/tables')
 fname.add('rois', '{results}/rois')
 
+
 # The paths for data file input
-fname.add('source',
-          '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
+# fname.add('source',
+#           '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
+# alternative:
+def source_file(files, source_type, subject):
+    if source_type == 'eeg':
+        return \
+            op.join(files.sourcedata_dir,
+                    'sub-%02d/%s/sub-%02d_dpx_eeg.bdf' % (subject,
+                                                          source_type,
+                                                          subject))
+    elif source_type == 'demo':
+        return \
+            op.join(files.sourcedata_dir,
+                    'sub-%02d/%s/sub-%02d_dpx_demographics.tsv' % (subject,
+                                                                   source_type,
+                                                                   subject))
+
+
+# create full path for data file input
+fname.add('source', source_file)
 
 
 # The paths that are produced by the analysis steps
