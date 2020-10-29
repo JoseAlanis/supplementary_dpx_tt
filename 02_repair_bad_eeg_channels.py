@@ -16,7 +16,7 @@ from mne import Annotations, open_report
 from mne.io import read_raw_fif
 
 # All parameters are defined in config.py
-from config import fname, parser, sampling_rate, LoggingFormat
+from config import fname, parser, montage, LoggingFormat
 from bads import find_bad_channels
 from viz import plot_z_scores
 
@@ -35,6 +35,7 @@ input_file = fname.output(subject=subject,
                           processing_step='task_blocks',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
+raw.set_montage(montage)
 
 ###############################################################################
 # 2) Check if there are any flat EOG channels
@@ -45,7 +46,7 @@ raw.drop_channels(flat_eogs)
 
 ###############################################################################
 # 3) Find noisy channels and compute robust average reference
-sfreq = sampling_rate
+sfreq = raw.info['sfreq']
 channels = raw.copy().pick_types(eeg=True).ch_names
 
 # extract eeg signal
@@ -53,11 +54,12 @@ eeg_signal = raw.get_data(picks='eeg')
 
 # reference signal to robust estimate of central tendency
 ref_signal = np.nanmedian(eeg_signal, axis=0)
-eeg_temp = eeg_signal - ref_signal
 
 i = 0
 noisy = []
 while True:
+    # remove reference
+    eeg_temp = eeg_signal - ref_signal
 
     # find bad channels by deviation (high variability in amplitude)
     bad_dev = find_bad_channels(eeg_temp,
@@ -68,31 +70,33 @@ while True:
     bad_corr = find_bad_channels(eeg_temp,
                                  channels=channels,
                                  sfreq=sfreq,
-                                 r_threshold=0.3,
-                                 percent_threshold=0.5,
+                                 r_threshold=0.4,
+                                 percent_threshold=0.05,
+                                 time_step=1.0,
                                  method='correlation')['correlation']
 
     # only keep unique values
     bads = set(bad_dev) | set(bad_corr)
 
-    # break if no (more) bad channels found
-    if i > 0 and (len(bads) == 0 or bads == set(noisy)) or i > 4:
-        break
+    # save identified noisy channels
+    if bads:
+        noisy.extend(bads)
+        print('Found bad channels %s'
+              % (', '.join([str(chan) for chan in bads])))
 
-    # save identified channels as noisy
-    noisy.extend(bads)
+        # interpolate noisy channels
+        raw_copy = raw.copy()
+        raw_copy.info['bads'] = noisy
+        raw_copy.interpolate_bads(mode='accurate')
+        eeg_signal = raw_copy.get_data(picks='eeg')
 
-    # interpolate noisy channels
-    raw_copy = raw.copy()
-    raw_copy.info['bads'] = noisy
-    raw_copy.interpolate_bads(mode='accurate')
-
-    # redo with newly referenced "clean" signal
-    eeg_signal = raw_copy.get_data(picks='eeg')
+    # compute new reference (mean of signal with interpolated channels)
     ref_signal = np.nanmean(eeg_signal, axis=0)
-    eeg_temp = eeg_signal - ref_signal
 
-    print(noisy)
+    # break if no (more) bad channels found
+    if (i > 0 and len(bads) == 0) or i > 4:
+        print('Finishing after i == %s' % i)
+        break
 
     i = i + 1
 
@@ -100,18 +104,15 @@ while True:
 # 4) Compute robust average reference for EEG data
 # remove robust reference
 eeg_signal = raw.get_data(picks='eeg')
-eeg_temp -= ref_signal
-
-# re-reference eeg-signal using the reference computed in
-# "clean" reference computed above
 eeg_temp = eeg_signal - ref_signal
 
 # bad by (un)correlation
 bad_corr = find_bad_channels(eeg_temp,
                              channels=channels,
                              sfreq=sfreq,
-                             r_threshold=0.3,
-                             percent_threshold=0.5,
+                             r_threshold=0.4,
+                             percent_threshold=0.05,
+                             time_step=1.0,
                              method='correlation')['correlation']
 
 # bad by deviation
@@ -163,7 +164,7 @@ bad_chans = []
 # loop through samples
 for sample in range(0, data.shape[1]):
     if len(times) > 0:
-        if sample <= (times[-1] + int(1 * raw_copy.info['sfreq'])):
+        if sample <= (times[-1] + int(1 * sfreq)):
             continue
     peak = []
     for channel in picks:
@@ -182,7 +183,7 @@ if len(times) > 0:
     # save onsets
     onsets = np.asarray(times)
     # include one second before artifact onset
-    onsets = ((onsets / raw_copy.info['sfreq']) + first_time) - 1
+    onsets = ((onsets / sfreq) + first_time) - 1
     # durations and labels
     duration = np.repeat(2, len(onsets))
     description = np.repeat('Bad', len(onsets))

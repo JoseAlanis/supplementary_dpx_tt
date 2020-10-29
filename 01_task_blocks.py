@@ -17,7 +17,7 @@ from mne.io import read_raw_fif
 from mne import events_from_annotations, concatenate_raws, open_report
 
 # All parameters are defined in config.py
-from config import fname, n_jobs, sampling_rate, parser, LoggingFormat
+from config import fname, n_jobs, parser, LoggingFormat
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -162,7 +162,6 @@ output_path = fname.output(processing_step='task_blocks',
                            file_type='raw.fif')
 
 # sample down and save file
-raw_bl_filt.resample(sfreq=sampling_rate)
 raw_bl_filt.save(output_path, overwrite=True)
 
 ###############################################################################

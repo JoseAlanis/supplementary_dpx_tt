@@ -393,7 +393,15 @@ rt_data.to_csv(op.join(fname.rt, 'sub-%s-rt.tsv' % subject),
 # 6) Extract the epochs
 
 # rejection threshold
-reject = dict(eeg=300e-6)
+reject = dict(eeg=250e-6)
+decim = 1
+
+if raw.info['sfreq'] == 256.0:
+    decim = 2
+elif raw.info['sfreq'] == 512.0:
+    decim = 4
+elif raw.info['sfreq'] == 1024.0:
+    decim = 8
 
 # extract cue epochs
 cue_epochs = Epochs(raw, cue_events, cue_event_id,
@@ -405,6 +413,7 @@ cue_epochs = Epochs(raw, cue_events, cue_event_id,
                     preload=True,
                     reject_by_annotation=True,
                     reject=reject,
+                    decim=decim
                     )
 
 # extract probe epochs
@@ -417,6 +426,7 @@ probe_epochs = Epochs(raw, probe_events, probe_event_id,
                       preload=True,
                       reject_by_annotation=True,
                       reject=reject,
+                      decim=decim
                       )
 
 ###############################################################################
@@ -444,11 +454,9 @@ probe_output_path = fname.output(processing_step='probe_epochs',
                                  file_type='epo.fif')
 
 # resample and save cue epochs to disk
-cue_epochs.resample(sfreq=100.)
 cue_epochs.save(cue_output_path, overwrite=True)
 
 # also save probe epochs to disk
-probe_epochs.resample(sfreq=100.)
 probe_epochs.save(probe_output_path, overwrite=True)
 
 ###############################################################################

@@ -73,7 +73,7 @@ sampling_rate = 256.0  # Hz
 task_name = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = make_standard_montage(kind='standard_1020')
+montage = make_standard_montage('standard_1020')
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 

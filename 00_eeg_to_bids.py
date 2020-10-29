@@ -19,8 +19,7 @@ from mne import find_events, Annotations, open_report
 from mne_bids import write_raw_bids, BIDSPath
 
 # All parameters are defined in config.py
-from config import fname, exclude, task_name, montage, event_ids, parser, \
-    LoggingFormat
+from config import fname, exclude, task_name, montage, parser, LoggingFormat
 
 ###############################################################################
 # Start processing step
@@ -33,10 +32,6 @@ print(LoggingFormat.PURPLE +
       LoggingFormat.BOLD +
       'Converting to BIDS: Subject %s' % subject +
       LoggingFormat.END)
-
-# Subject information (e.g., age, sex)
-# demo = pd.read_csv(fname.subject_demographics, sep='\t', header=0)
-
 
 ###############################################################################
 input_file = fname.source(source_type='eeg', subject=subject)
@@ -92,6 +87,7 @@ raw.info['subject_info'] = dict(id=subject,
 
 # frequency of power line
 raw.info['line_freq'] = 50.0
+raw.info['lowpass'] = raw.info['sfreq'] / 2
 
 ###############################################################################
 # 4) Create events info
@@ -99,7 +95,7 @@ raw.info['line_freq'] = 50.0
 events = find_events(raw,
                      stim_channel='Status',
                      output='onset',
-                     min_duration=0.002)
+                     min_duration=0.001)
 
 # 6) Extract events from the status channel and save them as file annotations
 # events to data frame

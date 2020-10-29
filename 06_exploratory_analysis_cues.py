@@ -72,20 +72,20 @@ lat_b = []
 
 # find peaks
 for subj in subjects:
-    _, la = a_erps['subj_%s' % subj].get_peak(tmin=0.12,
-                                              tmax=0.24,
+    _, la = a_erps['subj_%s' % subj].get_peak(tmin=0.10,
+                                              tmax=0.25,
                                               mode='neg')
     lat_a.append(la)
 
-    _, lb = b_erps['subj_%s' % subj].get_peak(tmin=0.12,
-                                              tmax=0.24,
+    _, lb = b_erps['subj_%s' % subj].get_peak(tmin=0.10,
+                                              tmax=0.25,
                                               mode='neg')
     lat_b.append(lb)
 
 
 # plot latency effects
-plt.hist(lat_a, 10, alpha = 0.5, label='Cue A')
-plt.hist(lat_b, 10, alpha = 0.5, label='Cue B')
+plt.hist(lat_a, 10, alpha=0.5, label='Cue A')
+plt.hist(lat_b, 10, alpha=0.5, label='Cue B')
 plt.legend(loc='upper left')
 plt.savefig(fname.figures + '/N170_peak_latency.pdf', dpi=300)
 
