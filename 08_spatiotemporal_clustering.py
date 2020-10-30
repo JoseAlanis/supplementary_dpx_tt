@@ -19,9 +19,9 @@ from scipy.stats import zscore
 
 from sklearn.linear_model import LinearRegression
 
-from mne.stats.cluster_level import _setup_connectivity, _find_clusters
+from mne.stats.cluster_level import _setup_adjacency, _find_clusters
 from mne.decoding import get_coef
-from mne.channels import find_ch_connectivity
+from mne.channels import find_ch_adjacency
 from mne import read_epochs
 
 # All parameters are defined in config.py
@@ -54,9 +54,11 @@ times = cue_epo.times
 ###############################################################################
 # 2) compute bootstrap confidence interval for cue betas and t-values
 
-# create group-level design matrix for effect of covariate
+#  z-score PBI predictor
 pbi_rt = pbi_rt.drop('subject', axis=1)
 pbi_rt['pbi_rt_z'] = zscore(pbi_rt.pbi_rt)
+
+# create group-level design matrix for effect of moderator (i.e., PBI)
 pbi_rt = pbi_rt.assign(intercept=1)
 pbi_rt = pbi_rt[['intercept', 'pbi_rt_z']]
 
@@ -73,14 +75,18 @@ f_H0 = np.zeros(boot)
 
 # setup connectivity
 n_tests = betas.shape[1]
-connectivity, ch_names = find_ch_connectivity(epochs_info, ch_type='eeg')
-connectivity = _setup_connectivity(connectivity, n_tests, n_times)
+adjacency, ch_names = find_ch_adjacency(epochs_info, ch_type='eeg')
+# connectivity, ch_names = find_ch_connectivity(epochs_info, ch_type='eeg')
+adjacency = _setup_adjacency(adjacency, n_tests, n_times)
 
 # threshold parameters for clustering
 threshold = dict(start=0.2, step=0.2)
 
 # store a_bias (bootstrap) betas
 pbi_rt_betas = np.zeros((boot, n_channels * n_times))
+
+# center betas around zero
+betas_null = betas - betas.mean(axis=0)
 
 # run bootstrap for regression coefficients
 for i in range(boot):
@@ -99,8 +105,8 @@ for i in range(boot):
     # resampled betas
     resampled_betas = betas[resampled_subjects, :]
 
-    # *** 2.2) estimate effect of covariate on group-level ***
-    # set up and fit covariate model using bootstrap sample
+    # *** 2.2) estimate effect of moderator (i.e., PBI) on group-level ***
+    # set up and fit moderator (i.e., PBI) model using bootstrap sample
     model_boot = LinearRegression(fit_intercept=False)
     model_boot.fit(X=pbi_rt.iloc[resampled_subjects], y=resampled_betas)
 
@@ -109,16 +115,14 @@ for i in range(boot):
 
     # save bootstrap betas
     for pred_i, predictor in enumerate(pbi_rt.columns):
-        if 'a_bias' in predictor:
-            # store regression coefficient for age covariate
+        if 'pbi_rt' in predictor:
+            # store regression coefficient for moderator (i.e., PBI)
             pbi_rt_betas[i, :] = group_coefs[:, pred_i]
 
     # *** 2.3) compute test statistic for bootstrap sample ***
     # compute standard error
+    resampled_betas = betas_null[resampled_subjects, :]
     se = resampled_betas.std(axis=0) / np.sqrt(resampled_betas.shape[0])
-
-    # center re-sampled betas around zero
-    resampled_betas -= betas.mean(axis=0)
 
     # compute t-values
     t_vals = resampled_betas.mean(axis=0) / se
@@ -136,7 +140,7 @@ for i in range(boot):
     clusters, cluster_stats = _find_clusters(t_vals,
                                              t_power=1,
                                              threshold=threshold,
-                                             connectivity=connectivity,
+                                             adjacency=adjacency,
                                              tail=0)
 
     # save max cluster mass. Combined, the max cluster mass values
@@ -151,8 +155,8 @@ for i in range(boot):
 # 3) Save results of bootstrap procedure
 
 # save f-max distribution
-np.save(fname.results + '/f_H0_10000b_2t_m250.npy', f_H0)
+np.save(fname.results + '/f_H0_10000b_2t_m250_null.npy', f_H0)
 # save cluster mass distribution
-np.save(fname.results + '/cluster_H0_10000b_2t_m250.npy', cluster_H0)
+np.save(fname.results + '/cluster_H0_10000b_2t_m250_null.npy', cluster_H0)
 # save pbi_rt betas
-np.save(fname.results + '/pbi_rt_betas_m250.npy', pbi_rt_betas)
+np.save(fname.results + '/pbi_rt_betas_m250_null.npy', pbi_rt_betas)
