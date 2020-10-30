@@ -12,6 +12,7 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -29,20 +30,20 @@ from config import subjects, fname, LoggingFormat
 
 # load individual beta coefficients
 betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
+covariate = fname.results + '/pbi.tsv'
+generic_subj = subjects[0]
 
 # Subject information about performance in the task
-pbi_rt = pd.read_csv(fname.results + '/pbi.tsv', sep='\t', header=0)
+pbi_rt = pd.read_csv(covariate, sep='\t', header=0)
 
 ###############################################################################
 # 1) import epochs to use as template
-
-# import the output from previous processing step
-input_file = fname.output(subject=subjects[0],
+input_file = fname.output(subject=generic_subj,
                           processing_step='cue_epochs',
                           file_type='epo.fif')
 cue_epo = read_epochs(input_file, preload=True)
 cue_epo = cue_epo['Correct A', 'Correct B'].copy()
-cue_epo = cue_epo.crop(tmin=-0.25, tmax=2.45)
+cue_epo = cue_epo.crop(tmin=-0.25, tmax=2.45, include_tmax=False)
 
 # save the generic info structure of cue epochs (i.e., channel names, number of
 # channels, etc.).
@@ -73,10 +74,9 @@ boot = 10000
 cluster_H0 = np.zeros(boot)
 f_H0 = np.zeros(boot)
 
-# setup connectivity
+# setup adjacency matrix
 n_tests = betas.shape[1]
 adjacency, ch_names = find_ch_adjacency(epochs_info, ch_type='eeg')
-# connectivity, ch_names = find_ch_connectivity(epochs_info, ch_type='eeg')
 adjacency = _setup_adjacency(adjacency, n_tests, n_times)
 
 # threshold parameters for clustering
@@ -119,6 +119,9 @@ for i in range(boot):
             # store regression coefficient for moderator (i.e., PBI)
             pbi_rt_betas[i, :] = group_coefs[:, pred_i]
 
+    # remove prev object
+    del resampled_betas
+
     # *** 2.3) compute test statistic for bootstrap sample ***
     # compute standard error
     resampled_betas = betas_null[resampled_subjects, :]
@@ -143,13 +146,13 @@ for i in range(boot):
                                              adjacency=adjacency,
                                              tail=0)
 
-    # save max cluster mass. Combined, the max cluster mass values
+    # Save max cluster mass. Combined, the max cluster mass values
     # computed on the basis of the bootstrap samples provide an approximation
     # of the cluster mass distribution under H0
     if len(clusters):
         cluster_H0[i] = cluster_stats.max()
     else:
-        cluster_H0[i] = np.nan
+        cluster_H0[i] = 0.0
 
 ##############################################################################
 # 3) Save results of bootstrap procedure
@@ -160,3 +163,17 @@ np.save(fname.results + '/f_H0_10000b_2t_m250_null.npy', f_H0)
 np.save(fname.results + '/cluster_H0_10000b_2t_m250_null.npy', cluster_H0)
 # save pbi_rt betas
 np.save(fname.results + '/pbi_rt_betas_m250_null.npy', pbi_rt_betas)
+
+# plot results
+y_max = np.histogram(f_H0, bins=100)[0]
+fig, ax = plt.subplots()
+ax.hist(f_H0, ec='k', bins=100)
+ax.axvline(np.quantile(f_H0, 0.95),
+           color='red', linestyle='dashed', linewidth=2)
+ax.text(x=np.quantile(f_H0, 0.95),
+        y=np.max(y_max),
+        s='p<0.05',
+        fontdict=dict(fontsize=12),
+        verticalalignment='top',
+        bbox=dict(boxstyle='round', facecolor='white', alpha=1.0))
+plt.savefig(fname.figures + '/F_max_distribution.pdf', dpi=300)

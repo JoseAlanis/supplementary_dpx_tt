@@ -17,8 +17,8 @@ from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from mne.stats.cluster_level import _setup_connectivity, _find_clusters
-from mne.channels import make_1020_channel_selections, find_ch_connectivity
+from mne.stats.cluster_level import _setup_adjacency, _find_clusters
+from mne.channels import make_1020_channel_selections, find_ch_adjacency
 from mne.evoked import EvokedArray
 from mne import read_epochs, grand_average
 
@@ -30,13 +30,9 @@ subjects = subjects[subjects != 51]
 # 1) Load results of bootstrap procedure
 
 # load f-max distribution
-f_H0 = np.load(fname.results + '/f_H0_10000b_2t.npy')
+f_H0 = np.load(fname.results + '/f_H0_10000b_2t_m250_null.npy')
 # load cluster mass distribution
-cluster_H0 = np.load(fname.results + '/cluster_H0_10000b_2t.npy')
-
-# # plot distribution of bootstrapped max cluster mass values
-# plt.hist(cluster_H0)
-# plt.hist(f_H0)
+cluster_H0 = np.load(fname.results + '/cluster_H0_10000b_2t_m250_null.npy')
 
 # also load individual beta coefficients
 betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
@@ -54,7 +50,7 @@ input_file = fname.output(subject=subjects[0],
                           file_type='epo.fif')
 cue_epo = read_epochs(input_file, preload=True)
 cue_epo = cue_epo['Correct A', 'Correct B'].copy()
-cue_epo_nb = cue_epo.copy().crop(tmin=-0.250, tmax=2.450)
+cue_epo_nb = cue_epo.copy().crop(tmin=-0.250, tmax=2.450, include_tmax=False)
 cue_epo = cue_epo.apply_baseline(baseline).crop(tmin=-0.300)
 
 # save the generic info structure of cue epochs (i.e., channel names, number of
@@ -133,7 +129,7 @@ fig_name = fname.figures + '/Evoked_average_betas.pdf'
 fig.savefig(fig_name, dpi=300)
 
 ###############################################################################
-# 4) Plot beta weights for the effect of condition
+# 4) Plot R-squared for the effect of condition
 
 # arguments fot the time-series maps
 ts_args = dict(gfp=False,
@@ -197,7 +193,7 @@ t_clust = f_clust.ravel()
 # f values above alpha level (based on f-max statistics)
 sig_mask = f_vals > np.quantile(f_H0, [.99], axis=0)
 # clusters threshold
-cluster_thresh = np.quantile(cluster_H0, [0.9999], axis=0)
+cluster_thresh = np.quantile(cluster_H0, [0.99], axis=0)
 
 # ###############################################################################
 # 6) Plot results
@@ -296,8 +292,8 @@ fig.savefig(fname.figures + '/T-map_image_effect_of_cue.pdf', dpi=300)
 
 # set up channel adjacency matrix
 n_tests = betas.shape[1]
-connectivity, ch_names = find_ch_connectivity(epochs_info, ch_type='eeg')
-connectivity = _setup_connectivity(connectivity, n_tests, n_times)
+adjacency, ch_names = find_ch_adjacency(epochs_info, ch_type='eeg')
+adjacency = _setup_adjacency(adjacency, n_tests, n_times)
 
 # threshold parameters for clustering
 threshold = dict(start=0.2, step=0.2)
@@ -305,14 +301,16 @@ threshold = dict(start=0.2, step=0.2)
 clusters, cluster_stats = _find_clusters(t_clust,
                                          t_power=1,
                                          threshold=threshold,
-                                         connectivity=connectivity,
+                                         adjacency=adjacency,
                                          tail=0)
 
 # get significant clusters
 cl_sig_mask = cluster_stats > cluster_thresh
 
-cl_sig_mask = np.transpose(cl_sig_mask.reshape((n_times, n_channels)), (1, 0))
-cluster_stats = np.transpose(cluster_stats.reshape((n_times, n_channels)), (1, 0))
+cl_sig_mask = np.transpose(
+    cl_sig_mask.reshape((n_times, n_channels)), (1, 0))
+cluster_stats = np.transpose(
+    cluster_stats.reshape((n_times, n_channels)), (1, 0))
 
 # create evoked object containing the resulting t-values
 cluster_map = dict()
@@ -327,23 +325,6 @@ fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(20, 5))
 # plot channel ROIs
 for s, selection in enumerate(selections):
     picks = selections[selection]
-
-    # cluster_map['ST-clustering effect of cue (B-A)'].plot_image(xlim=[-0.25, 2.5],
-    #                                                             picks=picks,
-    #                                                             clim=dict(
-    #                                                                 eeg=[0,
-    #                                                                      70]),
-    #                                                             colorbar=False,
-    #                                                             axes=ax[s],
-    #                                                             mask=cl_sig_mask,
-    #                                                             mask_cmap='inferno',
-    #                                                             cmap='inferno',
-    #                                                             mask_alpha=0.25,
-    #                                                             show=False,
-    #                                                             unit=False,
-    #                                                             # keep values scale
-    #                                                             scalings=dict(eeg=1)
-    #                                                             )
 
     effect_of_cue.plot_image(xlim=[-0.25, 2.5],
                              picks=picks,
@@ -369,7 +350,8 @@ for s, selection in enumerate(selections):
 
     ax[s].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
     ax[s].set_yticks(np.arange(len(picks)), minor=False)
-    labels = [cluster_map['ST-clustering effect of cue (B-A)'].ch_names[i] for i in picks]
+    labels = [cluster_map['ST-clustering effect of cue (B-A)'].ch_names[i]
+              for i in picks]
     ax[s].set_yticklabels(labels, minor=False)
     ax[s].spines['top'].set_visible(False)
     ax[s].spines['right'].set_visible(False)
