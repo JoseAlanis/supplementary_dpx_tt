@@ -80,14 +80,13 @@ linear_model.fit(group_design, betas)
 group_coefs = get_coef(linear_model, 'coef_')
 
 # create evoked object containing the estimated effect of moderator
-for pred_i, predictor in enumerate(group_design.columns):
-    if 'pbi_rt' in predictor:
-        # store regression coefficient for moderator (i.e., PBI)
-        group_betas = group_coefs[:, pred_i]
-        # back projection to channels x time points
-        group_betas = group_betas.reshape((n_channels, n_times))
-        # create evoked object containing the back projected coefficients
-        group_betas_evoked = EvokedArray(group_betas, epochs_info, tmin)
+pred_i = np.where(group_design.columns == 'pbi_rt_z')[0]
+# store regression coefficient for moderator (i.e., PBI)
+group_betas = group_coefs[:, pred_i]
+# back projection to channels x time points
+group_betas = group_betas.reshape((n_channels, n_times))
+# create evoked object containing the back projected coefficients
+group_betas_evoked = EvokedArray(group_betas, epochs_info, tmin)
 
 ###############################################################################
 # 4) plot effect of moderator (i.e, model estimates)
@@ -153,20 +152,45 @@ lower_b, upper_b = np.quantile(betas_pbi, [(a+1)/n_boot, c/n_boot], axis=0)
 lower_b = lower_b.reshape((n_channels, n_times))
 upper_b = upper_b.reshape((n_channels, n_times))
 
-# index of Pz in channels array
-electrode = 'F9'
-pick = group_betas_evoked.ch_names.index(electrode)
+# create plot for effect of moderator
+for elec in ['Fp1', 'AFz', 'F6', 'C3', 'CPz','Pz', 'Oz', 'CP1', 'PO8', 'PO7']:
+    # index of Pz in channels array
+    electrode = elec
+    pick = group_betas_evoked.ch_names.index(electrode)
 
-# create figure
-fig, ax = plt.subplots(figsize=(7, 4))
-ax = plot_compare_evokeds(group_betas_evoked,
-                          ylim=dict(eeg=[-3, 3]),
-                          picks=pick,
-                          show_sensors='upper right',
-                          axes=ax)
-ax[0].axes[0].fill_between(times,
-                           # transform values to microvolt
-                           lower_b[pick] * 1e6,
-                           upper_b[pick] * 1e6,
-                           alpha=0.2)
-plt.plot()
+    # create figure
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax = plot_compare_evokeds({r'Effect of $PBI_{rt}$':
+                                   group_betas_evoked},
+                              legend='upper center',
+                              ylim=dict(eeg=[-2.5, 2.5]),
+                              picks=pick,
+                              show_sensors='upper right',
+                              axes=ax,
+                              colors=['k'],
+                              show=False)
+    ax[0].axes[0].fill_between(times,
+                               # transform values to microvolt
+                               upper_b[pick] * 1e6,
+                               lower_b[pick] * 1e6,
+                               alpha=0.2,
+                               color='k')
+    ax[0].axes[0].set_ylabel(r'$\beta$ ($\mu$V)')
+    ax[0].axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
+                          color='black', linestyle='dashed', linewidth=.8)
+    ax[0].axes[0].spines['top'].set_visible(False)
+    ax[0].axes[0].spines['right'].set_visible(False)
+    ax[0].axes[0].spines['left'].set_bounds(-2.0, 2.0)
+    ax[0].axes[0].spines['bottom'].set_bounds(-.25, 2.5)
+    ax[0].axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    ax[0].axes[0].set_xticklabels(list(np.arange(-250, 2550, 250)))
+    ax[0].axes[0].set_xlabel('Time (ms)')
+    for t in times[(lower_b[pick] * 1e6 > 0.05) | (upper_b[pick] * 1e6 <
+                                                   -0.05)]:
+        ax[0].axes[0].scatter(t, -1.5, marker='d', color='darkmagenta', s=25.0)
+    plt.plot()
+    fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
+    w, h = fig.get_size_inches()
+    fig.set_size_inches(w * 1.15, h * 1.15)
+    fig_name = fname.figures + '/PBI_rt_betas_%s.pdf' % elec
+    fig.savefig(fig_name, dpi=300)
