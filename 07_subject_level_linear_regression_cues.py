@@ -12,6 +12,7 @@ License: BSD (3-clause)
 import numpy as np
 import patsy
 
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
@@ -111,8 +112,10 @@ for subj_ind, subj in enumerate(cues):
     Y = Vectorizer().fit_transform(dat)
 
     # 4.3) fit linear model with sklearn's LinearRegression
+    weights = compute_sample_weight(class_weight='balanced',
+                                    y=metadata.cue.to_numpy())
     linear_model = LinearRegression(n_jobs=n_jobs, fit_intercept=False)
-    linear_model.fit(design, Y)
+    linear_model.fit(design, Y, sample_weight=weights)
 
     # 4.4) extract the resulting coefficients (i.e., betas)
     # extract betas
@@ -135,5 +138,5 @@ for subj_ind, subj in enumerate(cues):
 
 ###############################################################################
 # 5) Save subject-level results to disk
-np.save(fname.results + '/subj_betas_cue_m250.npy', betas)
-np.save(fname.results + '/subj_r2_cue_m250.npy', r_squared)
+np.save(fname.results + '/subj_betas_cue_m250_robust.npy', betas)
+np.save(fname.results + '/subj_r2_cue_m250_robust.npy', r_squared)

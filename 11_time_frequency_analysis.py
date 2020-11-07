@@ -21,12 +21,16 @@ from config import subjects, fname, LoggingFormat, n_jobs
 
 # wavelet parameters and channels of interest
 tmax = 2.45
-decim = 2
+decim = 3
 baseline = (-1.0, -0.5)
 freqs = np.logspace(*np.log10([1, 40]), num=20)
 n_fq = len(freqs)
 n_cycles = np.logspace(*np.log10([1, 10]), num=n_fq)
-channels = ['PO7', 'PO8', 'Pz', 'FCz', 'FC1', 'C1', 'AF8', 'AF7']
+channels = ['PO7', 'PO8',
+            'Pz', 'CPz', 'CP1',
+            'FCz', 'FC1',
+            'C1', 'C3',
+            'AF4', 'AF3']
 
 # freqs and labels for plots
 ticks = np.unique(np.linspace(1, n_fq, 10).round()).astype('int')
@@ -87,6 +91,8 @@ for subj in subjects:
     tfr_cue_a['subj_%s' % subj] = tfr_epochs_A.crop(tmin=-0.5)
     tfr_cue_b['subj_%s' % subj] = tfr_epochs_B.crop(tmin=-0.5)
 
+    del tfr_epochs_A, tfr_epochs_B
+
 ###############################################################################
 # 2) Mean of epochs TFR
 
@@ -128,7 +134,7 @@ fig = difference_ba.plot_joint(timefreqs=((0.2, 6.0),
                                           (0.8, 1.5),
                                           (1.1, 14.0),
                                           (2.25, 12.0)),
-                               vmin=-6.5, vmax=6.5,
+                               vmin=-6.0, vmax=6.0,
                                title=title,
                                topomap_args=topomap_args,
                                show=False)

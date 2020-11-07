@@ -30,13 +30,14 @@ subjects = subjects[subjects != 51]
 # 1) Load results of bootstrap procedure
 
 # load f-max distribution
-f_H0 = np.load(fname.results + '/f_H0_10000b_2t_m250_null.npy')
+f_H0 = np.load(fname.results + '/f_H0_10000b_2t_m250_null_robust.npy')
 # load cluster mass distribution
-cluster_H0 = np.load(fname.results + '/cluster_H0_10000b_2t_m250_null.npy')
+cluster_H0 = np.load(fname.results +
+                     '/cluster_H0_10000b_2t_m250_null_robust.npy')
 
 # also load individual beta coefficients
-betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
-r2 = np.load(fname.results + '/subj_r2_cue_m250.npy')
+betas = np.load(fname.results + '/subj_betas_cue_m250_robust.npy')
+r2 = np.load(fname.results + '/subj_r2_cue_m250_robust.npy')
 
 ###############################################################################
 # 1) import epochs to use as template
@@ -261,7 +262,7 @@ for s, selection in enumerate(selections):
     norm = Normalize(vmin=-12.0, vmax=12.0)
     divider = make_axes_locatable(ax[s])
     cax = divider.append_axes('right', size='2.5%', pad=0.2)
-    cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
+    cbar = ColorbarBase(cax, cmap=cm.get_cmap('RdBu_r'),
                         ticks=[-12.0, -6.0, 0.0, 6.0, 12.0], norm=norm,
                         label=r'Effect of cue (T-value B-A)',
                         orientation=orientation)
@@ -368,7 +369,7 @@ for s, selection in enumerate(selections):
     norm = Normalize(vmin=-5.0, vmax=5.0)
     divider = make_axes_locatable(ax[s])
     cax = divider.append_axes('right', size='2.5%', pad=0.2)
-    cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
+    cbar = ColorbarBase(cax, cmap=cm.get_cmap('RdBu_r'),
                         ticks=[-5.0, 0, 5.0], norm=norm,
                         label=r'Effect of cue (ß-weight B-A)',
                         orientation=orientation)

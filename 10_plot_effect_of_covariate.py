@@ -30,11 +30,11 @@ from config import subjects, fname
 subjects = subjects[subjects != 51]
 
 # load individual beta coefficients (effect of condition)
-betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
+betas = np.load(fname.results + '/subj_betas_cue_m250_robust.npy')
 # load bootstrap betas (effect of moderator)
-betas_pbi = np.load(fname.results + '/pbi_rt_betas_m250.npy')
+betas_pbi = np.load(fname.results + '/pbi_rt_betas_m250_null_robust.npy')
 # load model R-squared
-r2 = np.load(fname.results + '/subj_r2_cue_m250.npy')
+r2 = np.load(fname.results + '/subj_r2_cue_m250_robust.npy')
 
 # information about subjects' performance in the task
 pbi_rt = pd.read_csv(fname.results + '/pbi.tsv', sep='\t', header=0)
@@ -48,7 +48,7 @@ input_file = fname.output(subject=subjects[0],
                           file_type='epo.fif')
 cue_epo = read_epochs(input_file, preload=True)
 cue_epo = cue_epo['Correct A', 'Correct B'].copy()
-cue_epo = cue_epo.crop(tmin=-0.25, tmax=2.45)
+cue_epo = cue_epo.crop(tmin=-0.25, tmax=2.45, include_tmax=False)
 
 # save the generic info structure of cue epochs (i.e., channel names, number of
 # channels, etc.).
@@ -153,7 +153,8 @@ lower_b = lower_b.reshape((n_channels, n_times))
 upper_b = upper_b.reshape((n_channels, n_times))
 
 # create plot for effect of moderator
-for elec in ['Fp1', 'AFz', 'F6', 'C3', 'CPz','Pz', 'Oz', 'CP1', 'PO8', 'PO7']:
+for elec in ['Fp1', 'AFz', 'AF4', 'F4', 'F6', 'F7', 'F5',
+             'C3', 'CPz','Pz', 'Oz', 'CP1', 'PO8', 'PO7']:
     # index of Pz in channels array
     electrode = elec
     pick = group_betas_evoked.ch_names.index(electrode)

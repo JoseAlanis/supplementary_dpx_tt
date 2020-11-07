@@ -88,6 +88,7 @@ plt.hist(lat_a, 10, alpha=0.5, label='Cue A')
 plt.hist(lat_b, 10, alpha=0.5, label='Cue B')
 plt.legend(loc='upper left')
 plt.savefig(fname.figures + '/N170_peak_latency.pdf', dpi=300)
+plt.close()
 
 # test for significance
 ttest_rel(lat_a, lat_b)
@@ -202,6 +203,8 @@ ab_diff = combine_evoked([ga_b_cue, -ga_a_cue], weights='equal')
 # make channel ROIs for easier interpretation of the plot
 selections = make_1020_channel_selections(ga_a_cue.info, midline='12z')
 
+# get colormap and create figure
+colormap = cm.get_cmap('RdBu_r')
 fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(23, 5.5))
 for s, selection in enumerate(selections):
     picks = selections[selection]
@@ -245,12 +248,11 @@ for s, selection in enumerate(selections):
     ax[s].axvline(x=0, ymin=0, ymax=len(picks),
                   color='black', linestyle='dashed', linewidth=1.0)
 
-    colormap = cm.get_cmap('RdBu_r')
     orientation = 'vertical'
     norm = Normalize(vmin=-5.0, vmax=5.0)
     divider = make_axes_locatable(ax[s])
     cax = divider.append_axes('right', size='3%', pad=0.2)
-    cbar = ColorbarBase(cax, cm.get_cmap('RdBu_r'),
+    cbar = ColorbarBase(cax, cmap=colormap,
                         ticks=[-5.0, -2.5, 0., 2.5, 5.0], norm=norm,
                         label=r'Difference B-A ($\mu$V)',
                         orientation=orientation)
@@ -298,7 +300,8 @@ fig.savefig(fname.figures + '/Diff_Topomaps.pdf', dpi=300)
 # 7) Plot ERPs for individual electrodes of interest
 cis = within_subject_cis([a_erps, b_erps])
 
-for electrode in ['FCz', 'Cz', 'C1', 'Pz', 'Oz', 'PO8', 'PO7']:
+for electrode in ['FCz', 'FC1', 'FC3', 'Cz', 'C1', 'C3',
+                  'Pz', 'Oz', 'PO8', 'PO7']:
     pick = ga_a_cue.ch_names.index(electrode)
 
     fig, ax = plt.subplots(figsize=(8, 4))

@@ -29,7 +29,7 @@ from mne import read_epochs
 from config import subjects, fname, LoggingFormat
 
 # load individual beta coefficients
-betas = np.load(fname.results + '/subj_betas_cue_m250.npy')
+betas = np.load(fname.results + '/subj_betas_cue_m250_robust.npy')
 covariate = fname.results + '/pbi.tsv'
 generic_subj = subjects[0]
 
@@ -158,11 +158,12 @@ for i in range(boot):
 # 3) Save results of bootstrap procedure
 
 # save f-max distribution
-np.save(fname.results + '/f_H0_10000b_2t_m250_null.npy', f_H0)
+np.save(fname.results + '/f_H0_10000b_2t_m250_null_robust.npy', f_H0)
 # save cluster mass distribution
-np.save(fname.results + '/cluster_H0_10000b_2t_m250_null.npy', cluster_H0)
+np.save(fname.results + '/cluster_H0_10000b_2t_m250_null_robust.npy',
+        cluster_H0)
 # save pbi_rt betas
-np.save(fname.results + '/pbi_rt_betas_m250_null.npy', pbi_rt_betas)
+np.save(fname.results + '/pbi_rt_betas_m250_null_robust.npy', pbi_rt_betas)
 
 # plot results
 y_max = np.histogram(f_H0, bins=100)[0]
@@ -176,4 +177,4 @@ ax.text(x=np.quantile(f_H0, 0.95),
         fontdict=dict(fontsize=12),
         verticalalignment='top',
         bbox=dict(boxstyle='round', facecolor='white', alpha=1.0))
-plt.savefig(fname.figures + '/F_max_distribution.pdf', dpi=300)
+plt.savefig(fname.figures + '/F_max_distribution_robust.pdf', dpi=300)
