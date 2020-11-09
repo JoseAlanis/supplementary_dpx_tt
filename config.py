@@ -11,8 +11,7 @@ License: BSD (3-clause)
 """
 import os
 from os import path as op
-import getpass
-from socket import getfqdn
+import platform
 
 import argparse
 import numpy as np
@@ -47,15 +46,15 @@ parser.add_argument('subject',
 
 # Determine which user is running the scripts on which machine. Set the path to
 # where the data is stored and determine how many CPUs to use for analysis.
-user = getpass.getuser()  # Username
-host = getfqdn()  # Hostname
+node = platform.node()  # Maschine
+system = platform.system()  # Os
 
 # You want to add your machine to this list
-if user == 'josealanis' and '.uni-marburg.de' in host:
+if 'Jose' in node and 'n' in system:
     # iMac at work
     data_dir = '../data'
     n_jobs = 2  # iMac has 4 cores (we'll use 2).
-elif user == 'josealanis' and host == 'josealanis-desktop':
+elif 'jose' in node and 'x' in system:
     # pc at home
     data_dir = '../data'
     n_jobs = 8  # My workstation has 16 cores (we'll use 8).
