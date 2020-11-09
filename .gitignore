@@ -4,6 +4,10 @@
 .idea/**
 eeg_preprocessing/.idea/**
 
+# R
+.Rhistory
+.r_scripts/.Rhistory
+
 # cache
 __pycache__/
 *.pyc
