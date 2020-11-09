@@ -9,6 +9,8 @@ Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
 License: BSD (3-clause)
 """
+from os import path as op
+
 import pandas as pd
 import numpy as np
 
@@ -24,7 +26,7 @@ subject = args.subject
 
 print(LoggingFormat.PURPLE +
       LoggingFormat.BOLD +
-      'Finding and removing bad components for subject %s' % subject +
+      'Extracting epochs for subject %s' % subject +
       LoggingFormat.END)
 
 ###############################################################################
@@ -378,11 +380,28 @@ metadata = {'block': block,
             'rt': rt}
 metadata = pd.DataFrame(metadata)
 
+# save RT measures for later analyses
+rt_data = metadata.copy()
+rt_data = rt_data.assign(subject=subject)
+
+# save to disk
+rt_data.to_csv(op.join(fname.rt, 'sub-%s-rt.tsv' % subject),
+               sep='\t',
+               index=False)
+
 ###############################################################################
 # 6) Extract the epochs
 
 # rejection threshold
-reject = dict(eeg=300e-6)
+reject = dict(eeg=250e-6)
+decim = 1
+
+if raw.info['sfreq'] == 256.0:
+    decim = 2
+elif raw.info['sfreq'] == 512.0:
+    decim = 4
+elif raw.info['sfreq'] == 1024.0:
+    decim = 8
 
 # extract cue epochs
 cue_epochs = Epochs(raw, cue_events, cue_event_id,
@@ -394,6 +413,7 @@ cue_epochs = Epochs(raw, cue_events, cue_event_id,
                     preload=True,
                     reject_by_annotation=True,
                     reject=reject,
+                    decim=decim
                     )
 
 # extract probe epochs
@@ -406,6 +426,7 @@ probe_epochs = Epochs(raw, probe_events, probe_event_id,
                       preload=True,
                       reject_by_annotation=True,
                       reject=reject,
+                      decim=decim
                       )
 
 ###############################################################################
@@ -432,11 +453,10 @@ probe_output_path = fname.output(processing_step='probe_epochs',
                                  subject=subject,
                                  file_type='epo.fif')
 
-# resample and save to disk
-cue_epochs.resample(sfreq=100.)
+# resample and save cue epochs to disk
 cue_epochs.save(cue_output_path, overwrite=True)
 
-probe_epochs.resample(sfreq=100.)
+# also save probe epochs to disk
 probe_epochs.save(probe_output_path, overwrite=True)
 
 ###############################################################################
@@ -465,3 +485,46 @@ with open_report(fname.report(subject=subject)[0]) as report:
                                 replace=True)
     report.save(fname.report(subject=subject)[1], overwrite=True,
                 open_browser=False)
+
+###############################################################################
+# 10) Save time bins for further analysis
+
+# extract corrects
+correct_epochs = cue_epochs['Correct A', 'Correct B']
+# apply baseline correction
+correct_epochs.apply_baseline((-0.300, -0.050))
+
+# epochs to pandas dataframe
+df = correct_epochs.to_data_frame(long_format=True)
+
+# get time roi N170
+n170 = df[((df["time"] >= 150) & (df["time"] <= 250))
+          & ((df["channel"] == 'PO8') |
+             (df["channel"] == 'PO7') |
+             (df["channel"] == 'FCz'))]
+n170 = n170.assign(subject=subject)
+
+# get time roi LPC
+LPC = df[((df["time"] >= 400) & (df["time"] <= 750))
+         & (df["channel"] == 'Pz')]
+LPC = LPC.assign(subject=subject)
+
+# get time roi CNV
+CNV = df[((df["time"] >= 1000) & (df["time"] <= 1750))
+         & (df["channel"] == 'C1')]
+CNV = CNV.assign(subject=subject)
+
+# export to .tsv files
+n170.to_csv(op.join(fname.rois,
+                    'sub-%s-n170.tsv' % subject),
+            sep='\t',
+            index=False)
+LPC.to_csv(op.join(fname.rois,
+                   'sub-%s-LPC.tsv' % subject),
+           sep='\t',
+           index=False)
+
+CNV.to_csv(op.join(fname.rois,
+                   'sub-%s-cnv.tsv' % subject),
+           sep='\t',
+           index=False)

@@ -11,8 +11,7 @@ License: BSD (3-clause)
 """
 import os
 from os import path as op
-import getpass
-from socket import getfqdn
+import platform
 
 import argparse
 import numpy as np
@@ -47,15 +46,15 @@ parser.add_argument('subject',
 
 # Determine which user is running the scripts on which machine. Set the path to
 # where the data is stored and determine how many CPUs to use for analysis.
-user = getpass.getuser()  # Username
-host = getfqdn()  # Hostname
+node = platform.node()  # Maschine
+system = platform.system()  # Os
 
 # You want to add your machine to this list
-if user == 'josealanis' and '.uni-marburg.de' in host:
+if 'Jose' in node and 'n' in system:
     # iMac at work
     data_dir = '../data'
     n_jobs = 2  # iMac has 4 cores (we'll use 2).
-elif user == 'josealanis' and host == 'josealanis-desktop':
+elif 'jose' in node and 'x' in system:
     # pc at home
     data_dir = '../data'
     n_jobs = 8  # My workstation has 16 cores (we'll use 8).
@@ -73,7 +72,7 @@ sampling_rate = 256.0  # Hz
 task_name = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations
-montage = make_standard_montage(kind='standard_1020')
+montage = make_standard_montage('standard_1020')
 # channels to be exclude from import
 exclude = ['EXG5', 'EXG6', 'EXG7', 'EXG8']
 
@@ -111,23 +110,47 @@ fname = FileNames()
 # directories to use for input and output
 fname.add('data_dir', data_dir)
 fname.add('bids_data', '{data_dir}/sub-{subject:03d}')
-fname.add('subject_demographics', '{data_dir}/subject_data/subject_demographics.tsv')  # noqa: E501
+fname.add('subject_demographics',
+          '{data_dir}/subject_data/subject_demographics.tsv')
 fname.add('sourcedata_dir', '{data_dir}/sourcedata')
 fname.add('derivatives_dir', '{data_dir}/derivatives')
 fname.add('reports_dir', '{derivatives_dir}/reports')
 fname.add('results', '{derivatives_dir}/results')
 fname.add('rt', '{results}/rt')
 fname.add('figures', '{results}/figures')
+fname.add('tables', '{results}/tables')
+fname.add('rois', '{results}/rois')
+
 
 # The paths for data file input
-fname.add('source', '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
+# fname.add('source',
+#           '{sourcedata_dir}/sub-{subject:02d}/eeg/sub-{subject:02d}_dpx_eeg.bdf')  # noqa
+# alternative:
+def source_file(files, source_type, subject):
+    if source_type == 'eeg':
+        return \
+            op.join(files.sourcedata_dir,
+                    'sub-%02d/%s/sub-%02d_dpx_eeg.bdf' % (subject,
+                                                          source_type,
+                                                          subject))
+    elif source_type == 'demo':
+        return \
+            op.join(files.sourcedata_dir,
+                    'sub-%02d/%s/sub-%02d_dpx_demographics.tsv' % (subject,
+                                                                   source_type,
+                                                                   subject))
+
+
+# create full path for data file input
+fname.add('source', source_file)
 
 
 # The paths that are produced by the analysis steps
 def output_path(path, processing_step, subject, file_type):
     path = op.join(path.derivatives_dir, processing_step, 'sub-%03d' % subject)
     os.makedirs(path, exist_ok=True)
-    return op.join(path, 'sub-%03d-%s-%s' % (subject, processing_step, file_type))  # noqa: E501
+    return op.join(path,
+                   'sub-%03d-%s-%s' % (subject, processing_step, file_type))
 
 
 # The full path for data file output

@@ -16,11 +16,10 @@ import pandas as pd
 from mne.io import read_raw_bdf
 from mne import find_events, Annotations, open_report
 
-from mne_bids import write_raw_bids, make_bids_basename
+from mne_bids import write_raw_bids, BIDSPath
 
 # All parameters are defined in config.py
-from config import fname, exclude, task_name, montage, event_ids, parser, \
-    LoggingFormat
+from config import fname, exclude, task_name, montage, parser, LoggingFormat
 
 ###############################################################################
 # Start processing step
@@ -31,14 +30,11 @@ subject = args.subject
 
 print(LoggingFormat.PURPLE +
       LoggingFormat.BOLD +
-      'Converting subject %s to BIDS' % subject +
+      'Converting to BIDS: Subject %s' % subject +
       LoggingFormat.END)
 
-# Subject information (e.g., age, sex)
-demo = pd.read_csv(fname.subject_demographics, sep='\t', header=0)
-
 ###############################################################################
-input_file = fname.source(subject=subject)
+input_file = fname.source(source_type='eeg', subject=subject)
 # 1) Import the data
 raw = read_raw_bdf(input_file,
                    preload=False,
@@ -73,6 +69,9 @@ date = date_of_record.strftime('%Y-%m-%d')
 
 # here, we compute only and approximate of the subjects birthday
 # this is to keep the date anonymous (at least to some degree)
+demo = pd.read_csv(fname.source(source_type='demo', subject=subject),
+                   sep='\t',
+                   header=0)
 age = demo[demo.subject_id == 'sub-' + str(subject).rjust(3, '0')].age
 sex = demo[demo.subject_id == 'sub-' + str(subject).rjust(3, '0')].sex
 
@@ -88,6 +87,7 @@ raw.info['subject_info'] = dict(id=subject,
 
 # frequency of power line
 raw.info['line_freq'] = 50.0
+raw.info['lowpass'] = raw.info['sfreq'] / 2
 
 ###############################################################################
 # 4) Create events info
@@ -95,24 +95,8 @@ raw.info['line_freq'] = 50.0
 events = find_events(raw,
                      stim_channel='Status',
                      output='onset',
-                     min_duration=0.002)
+                     min_duration=0.001)
 
-###############################################################################
-# 5) Export to bids
-# file name compliant with bids
-bids_basename = make_bids_basename(
-    subject=str(subject).rjust(3, '0'),
-    task=task_name)
-
-# save in bids format
-write_raw_bids(raw,
-               bids_basename,
-               fname.data_dir,
-               event_id=event_ids,
-               events_data=events,
-               overwrite=True)
-
-###############################################################################
 # 6) Extract events from the status channel and save them as file annotations
 # events to data frame
 events = pd.DataFrame(events,
@@ -131,6 +115,19 @@ annotations = Annotations(events['onset_in_s'],
                           orig_time=raw.info['meas_date'])
 # apply to raw data
 raw.set_annotations(annotations)
+
+###############################################################################
+# 5) Export to bids
+# file name compliant with bids
+bids_path = BIDSPath(
+    subject=str(subject).rjust(3, '0'),
+    task=task_name,
+    root=fname.data_dir)
+
+# save in bids format
+write_raw_bids(raw,
+               bids_path,
+               overwrite=True)
 
 ###############################################################################
 # 7) Plot the data for report

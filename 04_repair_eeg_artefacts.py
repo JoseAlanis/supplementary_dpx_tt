@@ -67,9 +67,9 @@ corrmap(icas=[temp_icas[1], ica],
 # compute correlations with template ocular movements that look slightly
 # different
 corrmap(icas=[temp_icas[0], ica],
-        template=(0, 0), threshold=0.9, label='blink_misc', plot=False)
+        template=(0, 0), threshold=0.85, label='blink_misc', plot=False)
 corrmap(icas=[temp_icas[0], ica],
-        template=(0, 1), threshold=0.9, label='blink_misc', plot=False)
+        template=(0, 2), threshold=0.85, label='blink_misc', plot=False)
 
 ###############################################################################
 # 4) Create summary plots to show signal correction on main experimental

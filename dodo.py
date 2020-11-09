@@ -49,7 +49,7 @@ def task_eeg_to_bids():
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(subject=subject),
+            file_dep=[fname.source(source_type='eeg', subject=subject),
                       '00_eeg_to_bids.py'],
 
             # The files produced by the script
@@ -76,8 +76,7 @@ def task_task_blocks():
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(subject=subject),
-                      '00_eeg_to_bids.py'],
+            file_dep=['00_eeg_to_bids.py'],
 
             # The files produced by the script
             targets=[fname.output(processing_step='task_blocks',
@@ -105,8 +104,7 @@ def task_repair_bad_channels():
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(subject=subject),
-                      '00_eeg_to_bids.py',
+            file_dep=['00_eeg_to_bids.py',
                       '01_task_blocks.py'],
 
             # The files produced by the script
@@ -135,8 +133,7 @@ def task_fit_ica():
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(subject=subject),
-                      '00_eeg_to_bids.py',
+            file_dep=['00_eeg_to_bids.py',
                       '01_task_blocks.py',
                       '02_repair_bad_eeg_channels.py'],
 
@@ -164,8 +161,7 @@ def task_repair_artefacts():
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(subject=subject),
-                      '00_eeg_to_bids.py',
+            file_dep=['00_eeg_to_bids.py',
                       '01_task_blocks.py',
                       '02_repair_bad_eeg_channels.py',
                       '03_fit_ica.py'],
@@ -194,8 +190,7 @@ def task_extract_epochs():
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(subject=subject),
-                      '00_eeg_to_bids.py',
+            file_dep=['00_eeg_to_bids.py',
                       '01_task_blocks.py',
                       '02_repair_bad_eeg_channels.py',
                       '03_fit_ica.py',

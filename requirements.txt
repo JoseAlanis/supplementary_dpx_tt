@@ -3,6 +3,7 @@ scipy
 matplotlib
 pandas
 sklearn
+patsy
 doit>=0.30
 mne>=0.19
 mne-bids

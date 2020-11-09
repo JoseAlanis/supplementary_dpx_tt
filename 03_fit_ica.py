@@ -1,7 +1,9 @@
 """
-================================================
+==============================
+Independent Component Analysis
+==============================
+
 Decompose EEG signal into independent components
-================================================
 
 Authors: José C. García Alanis <alanis.jcg@gmail.com>
 
@@ -37,7 +39,7 @@ raw_filt = raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)
 #  2) Set ICA parameters
 n_components = 20
 method = 'infomax'
-reject = dict(eeg=300e-6)
+reject = dict(eeg=250e-6)
 
 ###############################################################################
 #  2) Fit ICA
