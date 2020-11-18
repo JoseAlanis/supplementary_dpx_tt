@@ -16,6 +16,9 @@ import numpy as np
 from mvpa_stats import run_gat, get_stats_lines, get_p_scores
 
 from config import subjects, fname
+# exclude subjects 51
+subjects = subjects[subjects != 51]
+
 # choose decoder, can be one or multiple  of:
 # "svm-lin", "ridge", "log_reg", or "svm-nonlin"
 decoders = ["ridge"]
