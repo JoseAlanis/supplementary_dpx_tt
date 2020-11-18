@@ -53,11 +53,14 @@ system = platform.system()  # Os
 if 'Jose' in node and 'n' in system:
     # iMac at work
     data_dir = '../data'
-    n_jobs = 2  # iMac has 4 cores (we'll use 2).
+    n_jobs = 2  # This station has 4 cores (we'll use 2).
 elif 'jose' in node and 'x' in system:
     # pc at home
     data_dir = '../data'
-    n_jobs = 8  # My workstation has 16 cores (we'll use 8).
+    n_jobs = 8  # This station has 16 cores (we'll use 8).
+elif 'ma04' in node:
+    data_dir = '../data'
+    n_jobs = 2
 else:
     # Defaults
     data_dir = '../data'
