@@ -183,7 +183,6 @@ def run_gat(subj, decoder="ridge", n_jobs=n_jobs):
     return scores, preds  # return subject scores and prediction confidence
 
 
-
 def get_p_scores(scores, chance=.5, tfce=False):
     """
     Calculate p_values from scores for significance masking using either

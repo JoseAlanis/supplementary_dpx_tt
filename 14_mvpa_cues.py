@@ -16,7 +16,6 @@ import numpy as np
 from mvpa_stats import run_gat, get_stats_lines, get_p_scores
 
 from config import subjects, fname
-
 # choose decoder, can be one or multiple  of:
 # "svm-lin", "ridge", "log_reg", or "svm-nonlin"
 decoders = ["ridge"]
@@ -40,12 +39,13 @@ with open(fname.results + '/gat_scores_ridge.pkl', 'rb') as f:
 
 del f
 
-# thick lines index p<0.01
-# thin lines dec = "ridge"index p<0.05
 dec = "ridge"
 scores = scores_dict[dec]["scores"].copy()
 
-stats_dict = get_stats_lines(np.asarray(scores))
+del scores_dict
+
+scores = np.asarray(scores)
+stats_dict = get_stats_lines(scores)
 
 # to run TFCE on decoder scores
-p_ = get_p_scores(np.asarray(scores), chance=.5, tfce=True)
+p_ = get_p_scores(scores, chance=.5, tfce=True)
