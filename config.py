@@ -57,7 +57,7 @@ if 'Jose' in node and 'n' in system:
 elif 'jose' in node and 'x' in system:
     # pc at home
     data_dir = '../data'
-    n_jobs = 8  # This station has 16 cores (we'll use 8).
+    n_jobs = 2  # This station has 16 cores (we'll use 8).
 elif 'ma04' in node:
     data_dir = '../data'
     n_jobs = 2

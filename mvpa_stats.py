@@ -172,7 +172,7 @@ def run_gat(subj, decoder="ridge", n_jobs=n_jobs):
     data = epochs.get_data()
     labels = epochs.events[:, -1]
 
-    cv = StratifiedKFold(n_splits=5, random_state=42)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     # calculate prediction confidence scores
     preds = np.empty((len(labels), data.shape[2], data.shape[2]))
     for train, test in cv.split(data, labels):

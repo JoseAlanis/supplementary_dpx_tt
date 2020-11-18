@@ -21,34 +21,43 @@ subjects = subjects[subjects != 51]
 
 # choose decoder, can be one or multiple  of:
 # "svm-lin", "ridge", "log_reg", or "svm-nonlin"
+scores = np.zeros((len(subjects), 384, 384))
+pred = dict()
+# scores_dict = dict()
 decoders = ["ridge"]
-
-scores_dict = dict()
 for d in decoders:
-    scores_dict[d]=dict()
-    scores_dict[d]["scores"] = []
-    scores_dict[d]["predicts"] = []
-    for subj in subjects:
-        score, predict = run_gat(subj, decoder='ridge')
-        scores_dict[d]["scores"].append(score)
-        scores_dict[d]["predicts"].append(predict)
+    for s, subj in enumerate(subjects):
+        print(s, subj)
+        score, predict = run_gat(subj, decoder=d)
+        scores[s, :] = score
+        pred[subj] = predict
+        # scores_dict[d]["scores"].append(score)
+        # scores_dict[d]["predicts"].append(predict)
 
-with open(fname.results + '/gat_scores_ridge.pkl', 'wb') as f:
-    pickle.dump(scores_dict, f)
+# save scores
+np.save(fname.results + '/gat_scores_ridge.npy', scores)
 
-# execute this cell to load previously calculated(and saved) scores
-with open(fname.results + '/gat_scores_ridge.pkl', 'rb') as f:
-    scores_dict = pickle.load(f)
+# load GAT scores
+scores = np.load(fname.results + '/gat_scores_ridge.npy')
 
-del f
-
-dec = "ridge"
-scores = scores_dict[dec]["scores"].copy()
-
-del scores_dict
-
-scores = np.asarray(scores)
-stats_dict = get_stats_lines(scores)
-
-# to run TFCE on decoder scores
+# run TFCE on decoder scores
 p_ = get_p_scores(scores, chance=.5, tfce=True)
+
+# dec = "ridge"
+# scores = scores_dict[dec]["scores"].copy()
+#
+# del scores_dict
+#
+# scores = np.asarray(scores)
+# stats_dict = get_stats_lines(scores)
+#
+#
+# # save prediction confidence
+# with open(fname.results + '/gat_pred_conf_ridge.pkl', 'wb') as f:
+#     pickle.dump(pred, f)
+#
+# # execute this cell to load previously calculated(and saved) scores
+# with open(fname.results + '/gat_pred_conf_ridge.pkl', 'rb') as f:
+#     scores_dict = pickle.load(f)
+#
+# del f
