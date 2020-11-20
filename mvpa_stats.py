@@ -396,8 +396,19 @@ def over_plot(stats_dict, fill, axes=None, df_type=False):
 
     if df_type == "diff":
         # plot difference between decoders
-        plt_ = sns.tsplot(data=get_dfs(stats_dict, df_type=df_type), time="Time (s)", ax=axes, ci=[95],
-                          color="k", unit="Subject", condition=None, value="Difference in Accuracy (%)")
+        # plt_ = sns.lineplot(data=get_dfs(stats_dict, df_type=df_type),
+        #                     # time="Time (s)",
+        #                     ax=axes, ci=[95], color="k",
+        #                     units="Subject",
+        #                     # condition=None,
+        #                     value="Difference in Accuracy (%)")
+
+        plt_ = sns.lineplot(data=get_dfs(stats_dict, df_type=df_type),
+                            color='k',
+                            y='Difference in Accuracy (%)',
+                            x="Time (s)",
+                            ci=95,
+                            ax=axes)
 
         plt_.title.set_text("Difference between N170 and LPC decoding performance across time")
         plt_.title.set_position([.5, 1.025])
@@ -419,15 +430,42 @@ def over_plot(stats_dict, fill, axes=None, df_type=False):
     else:
 
         if df_type == "diag":  # plot diagonal
-            plt_ = sns.tsplot(data=get_dfs(stats_dict, df_type=df_type), time="Time (s)",
-                              ci=[95], unit="Subject", condition=None, linestyle="--",
-                              value="Accuracy (%)", color="k", ax=axes)
+            # plt_ = sns.lineplot(data=get_dfs(stats_dict, df_type=df_type),
+            #                     # time="Time (s)",
+            #                     ci=[95],
+            #                     units="Subject",
+            #                     # condition=None,
+            #                     linestyle="--", value="Accuracy (%)",
+            #                     color="k", ax=axes)
+
+            plt_ = sns.lineplot(data=get_dfs(stats_dict, df_type=df_type),
+                                color='k',
+                                linestyle="--",
+                                y='Accuracy (%)',
+                                x="Time (s)",
+                                ci=95,
+                                ax=axes)
 
         else:  # component generalization
-            plt_ = sns.tsplot(data=get_dfs(stats_dict, df_type), time="Time (s)", ax=axes,
-                              ci=[95], color=(plt.cm.viridis(np.linspace(0., 1., 10))[0],
-                                              plt.cm.viridis(np.linspace(0., 1., 10))[5]), unit="Subject",
-                              legend=True, condition="Component", value="Accuracy (%)")
+            # plt_ = sns.lineplot(data=get_dfs(stats_dict, df_type),
+            #                     # time="Time (s)",
+            #                     ax=axes,
+            #                     ci=[95],
+            #                     color=(plt.cm.viridis(np.linspace(0., 1., 10))[0],
+            #                            plt.cm.viridis(np.linspace(0., 1., 10))[5]),
+            #                     units="Subject",
+            #                     legend=True,
+            #                     # condition="Component",
+            #                     value="Accuracy (%)")
+
+            plt_ = sns.lineplot(data=get_dfs(stats_dict, df_type=df_type),
+                                hue='Component',
+                                color=(plt.cm.viridis(np.linspace(0., 1., 10))[0],
+                                       plt.cm.viridis(np.linspace(0., 1., 10))[5]),
+                                y='Accuracy (%)',
+                                x="Time (s)",
+                                ci=95,
+                                ax=axes)
 
         plt_.title.set_text(("Component generalization across time"
                              if not df_type else "Diagonal decoding performance"))
