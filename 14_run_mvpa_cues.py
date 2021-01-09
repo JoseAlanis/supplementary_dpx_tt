@@ -38,7 +38,7 @@ decoders = ["ridge"]
 # initialise place holders for results
 scores = np.zeros((len(subjects), 384, 384))
 pred = dict()
-patterns = np.zeros((len(subjects), 64, 384))
+patterns = np.zeros((len(subjects), 64*384))
 
 # compute classification scores for each participant
 for d in decoders:

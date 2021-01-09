@@ -187,7 +187,6 @@ def run_gat(subj, decoder="ridge", n_jobs=n_jobs):
     # compute topographical patterns
     dat = Vectorizer().fit_transform(data)
     clf.fit(dat, labels)
-    inv_y = 1.
     dat = dat - dat.mean(0, keepdims=True)
 
     # look for the type of classifier and get the weights
@@ -201,6 +200,7 @@ def run_gat(subj, decoder="ridge", n_jobs=n_jobs):
     # Compute patterns using Haufe's trick: A = Cov_X . W . Precision_Y
     # cf.Haufe, et al., 2014, NeuroImage,
     # doi:10.1016/j.neuroimage.2013.10.067)
+    inv_y = 1.
     patt_ = np.cov(dat.T).dot(filt_.T.dot(inv_y)).T
 
     # store the patterns accordingly
