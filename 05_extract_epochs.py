@@ -72,6 +72,7 @@ new_evs = events[0].copy()
 
 # global variables
 trial = 0
+broken = []
 sfreq = raw.info['sfreq']
 block_end = events[0][events[0][:, 2] == 17, 0] / sfreq
 # place holders for results
@@ -105,6 +106,9 @@ for event in range(len(new_evs[:, 2])):
             # look for next probe
             i = 2
             while new_evs[event + i, 2] not in {11, 12, 13, 14, 15, 16}:
+                if new_evs[event + i, 2] in {5, 6, 7, 8, 9, 10}:
+                    broken.append(trial)
+                    break
                 i += 1
 
             # if probe is an X
@@ -112,7 +116,7 @@ for event in range(len(new_evs[:, 2])):
                 # recode as too soon X-probe
                 new_evs[event + i, 2] = 20
             # if probe is an Y
-            else:
+            elif new_evs[event + i, 2] in {12, 13, 14, 15, 16}:
                 # recode as too soon Y-probe
                 new_evs[event + i, 2] = 21
 
@@ -340,6 +344,10 @@ probe_events = new_evs[np.where((new_evs[:, 2] == 20) |
 cue_event_id_rev = {val: key for key, val in cue_event_id.items()}
 probe_event_id_rev = {val: key for key, val in probe_event_id.items()}
 
+# check if events shape match
+if cue_events.shape[0] != probe_events.shape[0]:
+    cue_events = np.delete(cue_events, broken, 0)
+
 # create list with reactions based on cue and probe event ids
 same_stim, reaction_cues, reaction_probes, cues, probes = [], [], [], [], []
 for cue, probe in zip(cue_events[:, 2], probe_events[:, 2]):
@@ -370,14 +378,14 @@ for cue, probe in zip(cue_events[:, 2], probe_events[:, 2]):
     probes.append(probe)
 
 # create data frame with epochs metadata
-metadata = {'block': block,
-            'trial': range(0, trial),
+metadata = {'block': np.delete(block, broken, 0),
+            'trial': np.delete(np.arange(0, trial), broken, 0),
             'cue': cues,
             'probe': probes,
             'run': same_stim,
             'reaction_cues': reaction_cues,
             'reaction_probes': reaction_probes,
-            'rt': rt}
+            'rt': np.delete(rt, broken, 0)}
 metadata = pd.DataFrame(metadata)
 
 # save RT measures for later analyses

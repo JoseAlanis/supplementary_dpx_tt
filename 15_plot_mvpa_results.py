@@ -64,7 +64,7 @@ fig.savefig(fname.figures + '/gat_matrix.pdf', dpi=300)
 
 ##############################################################################
 # 4) Plot classifier performance for specific time slices of interest
-test_times = dict(N170=[0.17, 0.27], LPC=[0.50, 0.60], CNV=[0.95, 1.05])
+test_times = dict(N170=[0.17, 0.27], P3=[0.33, 0.43], LPC=[0.5, 0.6], CNV=[0.95, 1.05])
 
 # compute significance for those time slices
 stats_dict = get_stats_lines(scores, times=cue_epo.times, test_times=test_times)
