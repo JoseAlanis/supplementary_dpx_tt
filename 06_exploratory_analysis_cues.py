@@ -117,7 +117,7 @@ colors = np.linspace(0, 1, len(gfp_times.values()))
 cmap = cm.get_cmap('viridis')
 plt.rcParams.update({'mathtext.default':  'regular'})
 # plot GFP and save figure
-fig, ax = plt.subplots(figsize=(7, 2.5))
+fig, ax = plt.subplots(figsize=(7, 3))
 plot_compare_evokeds(evokeds,
                      axes=ax,
                      linestyles={'Cue A': '-', 'Cue B': '--'},
@@ -126,7 +126,7 @@ plot_compare_evokeds(evokeds,
                      ylim=dict(eeg=[-0.1, 4.0]),
                      colors={'Cue A': 'k', 'Cue B': 'crimson'},
                      show=False)
-ax.set_title('A) Cue evoked GFP', size=16.0, pad=20.0, loc='left',
+ax.set_title('A) Cue evoked GFP', size=14.0, pad=20.0, loc='left',
              fontweight='bold', fontname=font)
 ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)
 ax.set_xticklabels(list(np.arange(-250, 2550, 250)), fontname=font)

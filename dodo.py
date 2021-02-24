@@ -30,7 +30,7 @@ def task_check():
     return dict(
         file_dep=['check_system.py'],
         targets=[fname.system_check],
-        actions=['python check_system.py %s' % fname.data_dir]
+        actions=['python check_system.py -p %s' % fname.data_dir]
     )
 
 
@@ -45,19 +45,18 @@ def task_eeg_to_bids():
             task_dep=['check'],
 
             # A name for the sub-task: set to the name of the subject
-            name=subject,
+            name='Subject_%s_eeg_to_bids' % subject,
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
-            file_dep=[fname.source(source_type='eeg', subject=subject),
-                      '00_eeg_to_bids.py'],
+            file_dep=['00_eeg_to_bids.py'],
 
             # The files produced by the script
             targets=[fname.bids_data(subject=subject)],
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 00_eeg_to_bids.py %s' % subject]
+            actions=['python 00_eeg_to_bids.py -s %s' % subject]
         )
 
 
@@ -72,7 +71,7 @@ def task_task_blocks():
             task_dep=['eeg_to_bids'],
 
             # A name for the sub-task: set to the name of the subject
-            name=subject,
+            name='Subject_%s_task_blocks' % subject,
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
@@ -85,7 +84,7 @@ def task_task_blocks():
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 01_task_blocks.py %s' % subject]
+            actions=['python 01_task_blocks.py -s %s' % subject]
         )
 
 
@@ -100,7 +99,7 @@ def task_repair_bad_channels():
             task_dep=['task_blocks'],
 
             # A name for the sub-task: set to the name of the subject
-            name=subject,
+            name='Subject_%s_repair_bad_channels' % subject,
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
@@ -114,7 +113,7 @@ def task_repair_bad_channels():
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 02_repair_bad_eeg_channels.py %s' % subject]
+            actions=['python 02_repair_bad_eeg_channels.py -s %s' % subject]
         )
 
 
@@ -129,7 +128,7 @@ def task_fit_ica():
             task_dep=['repair_bad_channels'],
 
             # A name for the sub-task: set to the name of the subject
-            name=subject,
+            name='Subject_%s_fit_ica' % subject,
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
@@ -144,11 +143,11 @@ def task_fit_ica():
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 03_fit_ica.py %s' % subject]
+            actions=['python 03_fit_ica.py -s %s' % subject]
         )
 
 
-def task_repair_artefacts():
+def task_repair_eeg_artefacts():
     """Step 04: Repair EEG artefacts caused by ocular movements."""
     # Run the script for each subject in a sub-task.
     for subject in subjects:
@@ -157,7 +156,7 @@ def task_repair_artefacts():
             task_dep=['fit_ica'],
 
             # A name for the sub-task: set to the name of the subject
-            name=subject,
+            name='Subject_%s_repair_eeg_artefacts' % subject,
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
@@ -173,7 +172,7 @@ def task_repair_artefacts():
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 04_repair_eeg_artefacts.py %s' % subject]
+            actions=['python 04_repair_eeg_artefacts.py -s %s' % subject]
         )
 
 
@@ -183,10 +182,10 @@ def task_extract_epochs():
     for subject in subjects:
         yield dict(
             # This task should come after `fit_ica`
-            task_dep=['repair_artefacts'],
+            task_dep=['repair_eeg_artefacts'],
 
             # A name for the sub-task: set to the name of the subject
-            name=subject,
+            name='Subject_%s_extract_epochs' % subject,
 
             # If any of these files change, the script needs to be re-run. Make
             # sure that the script itself is part of this list!
@@ -206,7 +205,7 @@ def task_extract_epochs():
 
             # How the script needs to be called. Here we indicate it should
             # have one command line parameter: the name of the subject.
-            actions=['python 05_extract_epochs.py %s' % subject]
+            actions=['python 05_extract_epochs.py -s %s' % subject]
         )
 
 # # Here is another example task that averages across subjects.
@@ -239,3 +238,18 @@ def task_extract_epochs():
 #         targets=[fname.figure_grand_average],
 #         actions=['python figure_grand_average.py'],
 #     )
+#
+# def task_by_params():
+#     """Step 99: Example task"""
+#     # Run an example task
+#     import os
+#
+#     def show_params(path):
+#         print(os.listdir('%s' % path))
+#
+#     return {'actions':
+#                 [show_params],
+#             'params':
+#                 [{'name': 'path', 'short': 'p', 'default': './'}],
+#             'verbosity': 2
+#             }

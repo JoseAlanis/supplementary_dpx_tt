@@ -496,43 +496,43 @@ with open_report(fname.report(subject=subject)[0]) as report:
 
 ###############################################################################
 # 10) Save time bins for further analysis
-
-# extract corrects
-correct_epochs = cue_epochs['Correct A', 'Correct B']
-# apply baseline correction
-correct_epochs.apply_baseline((-0.300, -0.050))
-
-# epochs to pandas dataframe
-df = correct_epochs.to_data_frame(long_format=True)
-
-# get time roi N170
-n170 = df[((df["time"] >= 150) & (df["time"] <= 250))
-          & ((df["channel"] == 'PO8') |
-             (df["channel"] == 'PO7') |
-             (df["channel"] == 'FCz'))]
-n170 = n170.assign(subject=subject)
-
-# get time roi LPC
-LPC = df[((df["time"] >= 400) & (df["time"] <= 750))
-         & (df["channel"] == 'Pz')]
-LPC = LPC.assign(subject=subject)
-
-# get time roi CNV
-CNV = df[((df["time"] >= 1000) & (df["time"] <= 1750))
-         & (df["channel"] == 'C1')]
-CNV = CNV.assign(subject=subject)
-
-# export to .tsv files
-n170.to_csv(op.join(fname.rois,
-                    'sub-%s-n170.tsv' % subject),
-            sep='\t',
-            index=False)
-LPC.to_csv(op.join(fname.rois,
-                   'sub-%s-LPC.tsv' % subject),
-           sep='\t',
-           index=False)
-
-CNV.to_csv(op.join(fname.rois,
-                   'sub-%s-cnv.tsv' % subject),
-           sep='\t',
-           index=False)
+#
+# # extract corrects
+# correct_epochs = cue_epochs['Correct A', 'Correct B']
+# # apply baseline correction
+# correct_epochs.apply_baseline((-0.300, -0.050))
+#
+# # epochs to pandas dataframe
+# df = correct_epochs.to_data_frame(long_format=True)
+#
+# # get time roi N170
+# n170 = df[((df["time"] >= 150) & (df["time"] <= 250))
+#           & ((df["channel"] == 'PO8') |
+#              (df["channel"] == 'PO7') |
+#              (df["channel"] == 'FCz'))]
+# n170 = n170.assign(subject=subject)
+#
+# # get time roi LPC
+# LPC = df[((df["time"] >= 400) & (df["time"] <= 750))
+#          & (df["channel"] == 'Pz')]
+# LPC = LPC.assign(subject=subject)
+#
+# # get time roi CNV
+# CNV = df[((df["time"] >= 1000) & (df["time"] <= 1750))
+#          & (df["channel"] == 'C1')]
+# CNV = CNV.assign(subject=subject)
+#
+# # export to .tsv files
+# n170.to_csv(op.join(fname.rois,
+#                     'sub-%s-n170.tsv' % subject),
+#             sep='\t',
+#             index=False)
+# LPC.to_csv(op.join(fname.rois,
+#                    'sub-%s-LPC.tsv' % subject),
+#            sep='\t',
+#            index=False)
+#
+# CNV.to_csv(op.join(fname.rois,
+#                    'sub-%s-cnv.tsv' % subject),
+#            sep='\t',
+#            index=False)

@@ -40,10 +40,10 @@ def find_bad_channels(inst, picks='eeg',
         channels = inst.ch_names
         sfreq = inst.info['sfreq']
     elif isinstance(inst, np.ndarray):
+        dat = inst
         if not channels:
             raise ValueError('If "inst" is not an instance of BaseRaw a list '
                              'of channel names must be provided')
-        dat = inst
     else:
         raise ValueError('inst must be an instance of BaseRaw or a numpy array')
 
@@ -70,7 +70,7 @@ def find_bad_channels(inst, picks='eeg',
         flats = np.asarray([channels[int(flat)] for flat in flats])
 
         # warn user if too many channels were identified as flat
-        if len(flats) > (n_channels / 2):
+        if flats.shape[0] > (n_channels / 2):
             warnings.warn('Too many channels have been identified as "flat"! '
                           'Make sure the input values in "inst" are provided '
                           'on a volt scale. '
@@ -93,7 +93,7 @@ def find_bad_channels(inst, picks='eeg',
 
         # channels identified by deviation criterion
         bad_deviation = \
-            [channels[i] for i in np.where(np.abs(rz_scores) > 5.0)[0]]
+            [channels[i] for i in np.where(np.abs(rz_scores) >= 5.0)[0]]
 
         bad_channels.update(deviation=np.asarray(bad_deviation))
 
@@ -148,7 +148,6 @@ def find_bad_channels(inst, picks='eeg',
 
         # fill in the actual correlations
         max_r[np.arange(0, n_channels), :] = np.transpose(channel_r)
-
 
         # check which channels correlate badly with the other channels (i.e.,
         # are below correlation threshold) in a certain fraction of windows
