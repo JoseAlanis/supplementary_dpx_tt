@@ -17,7 +17,7 @@ from mne.io import read_raw_fif
 from mne import events_from_annotations, concatenate_raws, open_report
 
 # All parameters are defined in config.py
-from config import fname, n_jobs, parser, LoggingFormat
+from config import fname, n_jobs, parser, LoggingFormat, exclude
 
 # Handle command line arguments
 args = parser.parse_args()
@@ -36,7 +36,8 @@ input_file = fname.output(subject=subject,
 raw = read_raw_fif(input_file, preload=True)
 
 # drop status channel
-raw.drop_channels('Status')
+exclude.append('Status')
+raw.drop_channels(exclude)
 
 ###############################################################################
 # 2) Find periods of time in the data with no presented stimuli (i.e., the

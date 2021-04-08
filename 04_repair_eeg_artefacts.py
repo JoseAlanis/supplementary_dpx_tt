@@ -35,6 +35,8 @@ input_file = fname.output(subject=subject,
                           processing_step='repair_bads',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
+# activate average reference
+raw.apply_proj()
 
 ###############################################################################
 # 2) Import ICA weights from precious processing step
@@ -45,31 +47,37 @@ ica = read_ica(ica_file)
 
 ###############################################################################
 # 3) Find bad components via correlation with template ICA
-temp_subjs = [2, 3]
-temp_raws = []
+temp_subjs = [2, 10]
+# temp_raws = []
 temp_icas = []
 
 # import template subjects
 for subj in temp_subjs:
-    temp_raws.append(read_raw_fif(fname.output(subject=subj,
-                                               processing_step='repair_bads',
-                                               file_type='raw.fif')))
+    # temp_raws.append(read_raw_fif(fname.output(subject=subj,
+    #                                            processing_step='repair_bads',
+    #                                            file_type='raw.fif')))
     temp_icas.append(read_ica(fname.output(subject=subj,
                                            processing_step='fit_ica',
                                            file_type='ica.fif')))
 
+# set thresholds for correlation
+if subject in {5, 28, 32, 39, 45}:
+    threshold = 0.90
+else:
+    threshold = 0.85
+
 # compute correlations with template ocular movements up/down and left/right
 corrmap(icas=[temp_icas[1], ica],
-        template=(0, 0), threshold=0.85, label='blink_up', plot=False)
+        template=(0, 0), threshold=threshold, label='blink_up', plot=False)
 corrmap(icas=[temp_icas[1], ica],
-        template=(0, 5), threshold=0.85, label='blink_side', plot=False)
+        template=(0, 1), threshold=threshold, label='blink_side', plot=False)
 
 # compute correlations with template ocular movements that look slightly
 # different
 corrmap(icas=[temp_icas[0], ica],
-        template=(0, 0), threshold=0.85, label='blink_misc', plot=False)
+        template=(0, 0), threshold=threshold, label='blink_misc', plot=False)
 corrmap(icas=[temp_icas[0], ica],
-        template=(0, 2), threshold=0.85, label='blink_misc', plot=False)
+        template=(0, 1), threshold=threshold, label='blink_misc', plot=False)
 
 ###############################################################################
 # 4) Create summary plots to show signal correction on main experimental
@@ -78,8 +86,8 @@ corrmap(icas=[temp_icas[0], ica],
 # create a-cue epochs
 a_evs = events_from_annotations(raw, regexp='^(70)')[0]
 a_epo = Epochs(raw, a_evs,
-               tmin=-2.5,
-               tmax=2.5,
+               tmin=-2.0,
+               tmax=2.0,
                reject_by_annotation=True,
                proj=False,
                preload=True)

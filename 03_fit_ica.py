@@ -31,6 +31,8 @@ input_file = fname.output(subject=subject,
                           processing_step='repair_bads',
                           file_type='raw.fif')
 raw = read_raw_fif(input_file, preload=True)
+# activate average reference
+raw.apply_proj()
 
 # filter data to remove drifts
 raw_filt = raw.copy().filter(l_freq=1.0, h_freq=None, n_jobs=n_jobs)

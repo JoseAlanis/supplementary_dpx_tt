@@ -19,7 +19,7 @@ from mne import find_events, Annotations, open_report
 from mne_bids import write_raw_bids, BIDSPath
 
 # All parameters are defined in config.py
-from config import fname, exclude, task_name, montage, parser, LoggingFormat
+from config import fname, task_name, montage, parser, LoggingFormat
 
 ###############################################################################
 # Start processing step
@@ -37,8 +37,7 @@ print(LoggingFormat.PURPLE +
 # 1) Import the data
 input_file = fname.source(source_type='eeg', subject=subject)
 raw = read_raw_bdf(input_file,
-                   preload=False,
-                   exclude=exclude)
+                   preload=False)
 
 # sampling rate
 sfreq = raw.info['sfreq']
@@ -112,8 +111,7 @@ events = events.loc[(events['description'] <= 245)]
 # crate annotations object
 annotations = Annotations(events['onset_in_s'],
                           events['duration'],
-                          events['description'],
-                          orig_time=raw.info['meas_date'])
+                          events['description'])
 # apply to raw data
 raw.set_annotations(annotations)
 
