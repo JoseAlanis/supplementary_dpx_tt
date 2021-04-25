@@ -15,7 +15,7 @@ source('./r_functions/spr2.R')
 host <- Sys.info()
 
 # set default path or promt user for other path
-if (host['nodename'] == "josealanis-desktop") {
+if (grep('jose', host['user']) & grep('x', host['sysname'])) {
 
   # defaut path in project structure
   path_to_rt <- '../data/derivatives/results'
@@ -88,7 +88,7 @@ corrects %>%
   summarise(mn = mean(n), sd = sd(n))
 
 # *** plot distribution of reaction time ***
-getPacks(c('ggplot2', 'viridis', 'Hmisc'))
+getPacks(c('ggplot2', 'ggbeeswarm', 'viridis', 'Hmisc', 'see'))
 
 # data for plot
 m_rt <- corrects %>%
@@ -105,8 +105,47 @@ m_rt <- corrects %>%
 #  jitter.height = 0,
 #  dodge.width = 0,
 #  seed = 2)
-pn <- position_nudge(x = 0.4)
+pn <- position_nudge(x = 0.25)
 pd <- position_jitter(0.2)
+
+rt_plot <- ggplot(data = m_rt,
+                  aes(x = probe, y = m,
+                      fill = probe, shape = probe)) +
+  # geom_line(aes(group = subject), position = pd, alpha = 0.1, size = 0.4) +
+  # geom_quasirandom(varwidth = TRUE, dodge.width = 1) +
+  geom_beeswarm(size = 2) +
+  geom_violinhalf(position = pn, width = 0.75, alpha = 0.5) +
+  geom_boxplot(position = pn, width = 0.10, alpha = 1.0, outlier.shape = NA) +
+  # geom_point(position = pd) +
+  scale_shape_manual(values = c(21, 23, 24, 25)) +
+  scale_y_continuous(limits = c(0.1, 0.8),
+                     breaks = seq(0.1, 0.8, 0.1),
+                     labels = seq(100, 800, 100)) +
+  geom_segment(aes(x = -Inf, y = 0.1, xend = -Inf, yend = 0.8),
+               color = 'black', size = rel(0.5), linetype = 1) +
+  geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf),
+               color = 'black', size = rel(0.5), linetype = 1) +
+  theme(axis.title.x = element_text(color = 'black', size = 12,
+                                    margin = margin(t = 10)),
+        axis.title.y= element_text(color = 'black', size = 12,
+                                   margin = margin(r = 10)),
+        axis.text = element_text(color = 'black', size = 10),
+        panel.background = element_rect(fill = 'white'),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "gray97"),
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "gray97"),
+        strip.text = element_blank(),
+        strip.background = element_blank(),
+        legend.position='bottom',
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        panel.spacing = unit(1, "lines")) +
+  coord_flip(); rt_plot
+# save to disk
+ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
+       plot = rt_plot, width = 5, height = 3.5, dpi = 300)
+
 
 
 # create the plot
@@ -134,7 +173,7 @@ rt_plot <- ggplot(data = m_rt,
         axis.title.y= element_text(color = 'black', size = 12,
                                    margin = margin(r = 10)),
         axis.text = element_text(color = 'black', size = 10),
-        panel.background = element_rect(fill = 'gray97'),
+        panel.background = element_rect(fill = 'white'),
         strip.text = element_blank(),
         strip.background = element_blank(),
         legend.position='bottom',
@@ -292,7 +331,7 @@ contrast_plot <- ggplot(es, aes(contrast, effect.size)) +
   geom_segment(aes(x = 'AX - AY', y = -Inf,
                    xend = 'BX - BY', yend = -Inf),
                color = 'black', size = rel(0.5), linetype = 1) +
-  labs(x = 'Contrast', y = "Effect size (Cohen's d") +
+  labs(x = 'Contrast', y = "Effect size (Cohen's d)") +
   theme(axis.title.x = element_text(color = 'black', size = 14,
                                     margin = margin(t = 10)),
         axis.title.y= element_text(color = 'black', size = 14,
@@ -358,10 +397,10 @@ total <- rt_df %>%
   mutate(probe =
            ifelse(nchar(probe) > 1, substr(probe, 2, 2), probe),
          trial_type = paste0(cue, probe)) %>%
-  group_by(subject, block, trial_type) %>%
+  group_by(subject, trial_type) %>%
   mutate(n_trials = sum(!is.na(trial))) %>%
-  select(subject, block, trial_type, n_trials) %>%
-  arrange(subject, block, trial_type) %>%
+  select(subject, trial_type, n_trials) %>%
+  arrange(subject, trial_type) %>%
   unique()
 
 # compute number of errors per condition
@@ -370,13 +409,13 @@ errors <- rt_df %>%
            ifelse(nchar(probe) > 1, substr(probe, 2, 2), probe),
          trial_type = paste0(cue, probe)) %>%
   filter(reaction_probes == 'Incorrect') %>%
-  group_by(subject, block, trial_type) %>%
+  group_by(subject, trial_type) %>%
   mutate(n_errors = sum(!is.na(trial))) %>%
   summarise(n_errors = mean(n_errors)) %>%
-  arrange(subject, block, trial_type)
+  arrange(subject, trial_type)
 
 # merge data frames
-errors <- merge(total, errors, c('subject', 'block', 'trial_type'), all.x = T)
+errors <- merge(total, errors, c('subject', 'trial_type'), all.x = T)
 # replace missing values with zeros
 errors[is.na(errors)] <- 0
 
@@ -387,8 +426,8 @@ errors <- errors %>%
 errors %>% group_by(trial_type) %>%
   summarise(m = mean(error_rate), sd = sd(error_rate))
 
-errors %>% group_by(block, trial_type) %>%
-  summarise(m = mean(error_rate), sd = sd(error_rate))
+# errors %>% group_by(block, trial_type) %>%
+#   summarise(m = mean(error_rate), sd = sd(error_rate))
 
 # plot distribution of error rates
 getPacks(c('ggplot2', 'viridis'))
@@ -399,9 +438,8 @@ pjd <- position_jitterdodge(
   seed = 2)
 pn <- position_nudge(x = 0.25)
 errors_plot <- ggplot(errors,
-                  aes(y = error_rate, x = block,
-                      fill = trial_type, shape = block)) +
-  facet_wrap(~ trial_type, ncol = 4, scales = 'free_y') +
+                  aes(y = error_rate, x = trial_type,
+                      fill = trial_type)) +
   geom_line(aes(group = subject), position = pjd, alpha = 0.25, size = 0.33,
             color='black') +
   geom_jitter(position = pjd, size = 1.75, color='black', alpha = 0.2) +
@@ -582,27 +620,27 @@ n_corrects <-rt_df %>%
            ifelse(nchar(probe) > 1, substr(probe, 2, 2), probe),
          trial_type = paste0(cue, probe)) %>%
   filter(reaction_probes == 'Correct') %>%
-  group_by(subject, block, trial_type) %>%
+  group_by(subject, trial_type) %>%
   mutate(n_corrects = sum(!is.na(trial))) %>%
   summarise(n_corrects = mean(n_corrects)) %>%
-  arrange(subject, block, trial_type)
+  arrange(subject, trial_type)
 
 n_corrects <- merge(total, n_corrects,
-                    c('subject', 'block', 'trial_type'), all.x = T)
+                    c('subject', 'trial_type'), all.x = T)
 
 n_corrects <- n_corrects %>%
   mutate(correct_rate=(n_corrects+0.5)/(n_trials+1))
 
-n_corrects <- merge(n_corrects, select(errors, subject, block, trial_type,
+n_corrects <- merge(n_corrects, select(errors, subject, trial_type,
                                        error_rate),
-                    c('subject', 'block', 'trial_type'))
+                    c('subject', 'trial_type'))
 
 a_bias <-  n_corrects %>%
   filter(trial_type == 'AX' | trial_type == 'AY') %>%
-  group_by(subject, block) %>%
+  group_by(subject) %>%
   mutate(a_bias = ifelse(trial_type == 'AX',
                          0.5*(qnorm(correct_rate) + qnorm(lead(error_rate))), NA )) %>%
-  select(subject, block, a_bias) %>% filter(!is.na(a_bias)) %>%
+  select(subject, a_bias) %>% filter(!is.na(a_bias)) %>%
   group_by(subject) %>%
   summarise(a_bias = mean(a_bias)) %>%
   mutate(a_bias = a_bias - mean(a_bias))
@@ -613,12 +651,12 @@ write.table(a_bias,
             sep = '\t')
 
 pbi_rt <- corrects %>%
-  group_by(subject, block, probe) %>%
+  group_by(subject, probe) %>%
   filter(probe == 'BX' | probe == 'AY') %>%
-  group_by(subject, block) %>%
+  group_by(subject) %>%
   mutate(pbi_rt = ifelse(probe == 'AY',
                           (m_rt-lead(m_rt)) / (m_rt+lead(m_rt)), NA)) %>%
-  select(subject, block, pbi_rt) %>% filter(!is.na(pbi_rt)) %>%
+  select(subject, pbi_rt) %>% filter(!is.na(pbi_rt)) %>%
   group_by(subject) %>%
   summarise(pbi_rt = mean(pbi_rt)) %>%
   mutate(pbi_rt = pbi_rt - mean(pbi_rt))

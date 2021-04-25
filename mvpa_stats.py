@@ -36,7 +36,7 @@ from mne.stats import fdr_correction, spatio_temporal_cluster_1samp_test, \
     ttest_1samp_no_p
 from mne import read_epochs
 
-from config import fname, n_jobs
+from config import fname
 
 
 # signed rank test
@@ -54,7 +54,7 @@ def _loop(x, function):
 
 
 # correct p values for multiple testing
-def parallel_stats(X, function=_my_wilcoxon, correction='FDR', n_jobs=n_jobs):
+def parallel_stats(X, function=_my_wilcoxon, correction='FDR', n_jobs=2):
 
     # check if correction method was provided
     if correction not in [False, None, 'FDR']:
@@ -91,8 +91,9 @@ def _stat_fun(x, sigma=0, method='relative'):
 
 
 # threshold free cluster permutation test
-def stats_tfce(X, n_permutations=2**10, threshold=dict(start=.2, step=.2),
-               n_jobs=n_jobs):
+def stats_tfce(X, n_permutations=2**10,
+               threshold=dict(start=0.2, step=0.2),
+               n_jobs=2):
     X = np.array(X)
     T_obs_, clusters, p_values, _ = \
         spatio_temporal_cluster_1samp_test(
@@ -125,7 +126,7 @@ def get_epochs(subj):
 
 
 # run generalisation across time and condition
-def run_gat(subj, decoder="ridge", n_jobs=n_jobs):
+def run_gat(subj, decoder="ridge", n_jobs=2):
     """
     Function to run Generalization Across Time (GAT).
 
@@ -218,7 +219,7 @@ def run_gat(subj, decoder="ridge", n_jobs=n_jobs):
     return scores, preds, patterns
 
 
-def get_p_scores(scores, chance=.5, tfce=False):
+def get_p_scores(scores, chance=.5, tfce=False, n_jobs=2):
     """
     Calculate p_values from scores for significance masking using either
     TFCE or FDR.
@@ -233,8 +234,8 @@ def get_p_scores(scores, chance=.5, tfce=False):
         Specify whether to Threshold Free Cluster Enhancement (True)
         or FDR (False)
     """
-    p_values = (parallel_stats(scores - chance) if tfce is False
-                else stats_tfce(scores - chance))
+    p_values = (parallel_stats(scores - chance, n_jobs=n_jobs) if tfce is False
+                else stats_tfce(scores - chance, n_jobs=n_jobs))
     return p_values
 
 

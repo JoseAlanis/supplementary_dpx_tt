@@ -102,8 +102,8 @@ for subj_ind, subj in enumerate(cues):
     # design.cue_B = design.cue_B - design.cue_B.unique().mean()
 
     # create design matrix
-    design = patsy.dmatrix("cue", design,
-                           return_type='dataframe')
+    design = patsy.dmatrix("cue", design, return_type='dataframe')
+    design = design[['cue[T.B]']]
 
     # 4.2) vectorise channel data for linear regression
     # data to be analysed
@@ -114,12 +114,13 @@ for subj_ind, subj in enumerate(cues):
     # 4.3) fit linear model with sklearn's LinearRegression
     weights = compute_sample_weight(class_weight='balanced',
                                     y=metadata.cue.to_numpy())
-    linear_model = LinearRegression(n_jobs=n_jobs, fit_intercept=False)
+    linear_model = LinearRegression(n_jobs=n_jobs, fit_intercept=True)
     linear_model.fit(design, Y, sample_weight=weights)
 
     # 4.4) extract the resulting coefficients (i.e., betas)
     # extract betas
     coefs = get_coef(linear_model, 'coef_')
+    inter = linear_model.intercept_
 
     # 4.5) extract model r_squared
     r2 = r2_score(Y, linear_model.predict(design),
@@ -130,11 +131,12 @@ for subj_ind, subj in enumerate(cues):
     # save results
     for pred_i, predictor in enumerate(design.columns):
         print(pred_i, predictor)
-        if 'Intercept' in predictor:
-            continue
-        elif 'cue' in predictor:
+        if 'cue' in predictor:
             # extract cue beats
             betas[subj_ind, :] = coefs[:, pred_i]
+        # elif 'Intercept' in predictor:
+        #     continue
+
 
 ###############################################################################
 # 5) Save subject-level results to disk

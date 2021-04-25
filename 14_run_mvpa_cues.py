@@ -43,7 +43,7 @@ patterns = np.zeros((len(subjects), 64*384))
 # compute classification scores for each participant
 for d in decoders:
     for s, subj in enumerate(subjects):
-        score, predict, pattern = run_gat(subj, decoder=d)
+        score, predict, pattern = run_gat(subj, decoder=d, n_jobs=16)
         scores[s, :] = score
         pred[subj] = predict
         patterns[s, :] = pattern
@@ -64,7 +64,7 @@ del f, pred
 # to assesses significance
 
 # compute p values
-p_values = get_p_scores(scores, chance=.5, tfce=True)
+p_values = get_p_scores(scores, chance=0.5, tfce=True, n_jobs=2)
 
 # save p values
 np.save(fname.results + '/p_vals_gat_ridge.npy', p_values)
