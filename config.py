@@ -48,23 +48,23 @@ parser.add_argument('-s', '--subject',
 
 # Determine which user is running the scripts on which machine. Set the path to
 # where the data is stored and determine how many CPUs to use for analysis.
-node = platform.node()  # Maschine
-system = platform.system()  # Os
+node = platform.node()
+system = platform.system()
 
 # You want to add your machine to this list
 if 'Jose' in node and 'n' in system:
-    # iMac at work
     data_dir = '../data'
-    n_jobs = 2  # This station has 4 cores (we'll use 2).
+    n_jobs = 2
 elif 'jose' in node and 'x' in system:
     # pc at home
     data_dir = '../data'
     n_jobs = 'cuda'  # Use NVIDIA CUDA GPU processing
 elif 'ma04' in node:
+    # station at work
     data_dir = '../data'
     n_jobs = 2
 else:
-    # Defaults
+    # defaults
     data_dir = '../data'
     n_jobs = 1
 
