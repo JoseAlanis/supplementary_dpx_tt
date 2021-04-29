@@ -64,7 +64,10 @@ del f, pred
 # to assesses significance
 
 # compute p values
-p_values = get_p_scores(scores, chance=0.5, tfce=True, n_jobs=2)
+p_values = get_p_scores(scores, chance=0.5, tfce=True,
+                        permutations=2**10,
+                        threshold=dict(start=0.2, step=0.2),
+                        n_jobs=1)
 
 # save p values
 np.save(fname.results + '/p_vals_gat_ridge.npy', p_values)

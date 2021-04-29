@@ -91,18 +91,16 @@ def _stat_fun(x, sigma=0, method='relative'):
 
 
 # threshold free cluster permutation test
-def stats_tfce(X, n_permutations=2**10,
-               threshold=dict(start=0.2, step=0.2),
-               n_jobs=2):
-    X = np.array(X)
-    T_obs_, clusters, p_values, _ = \
-        spatio_temporal_cluster_1samp_test(
-            X,
-            out_type='mask',
-            stat_fun=_stat_fun,
-            n_permutations=n_permutations,
-            threshold=threshold,
-            n_jobs=n_jobs)
+def stats_tfce(X, n_permutations=1000, threshold=None, n_jobs=2):
+
+    # calculate p-values using cluster permutation test
+    _, _, p_values, _ = spatio_temporal_cluster_1samp_test(
+        X,
+        out_type='indices',
+        stat_fun=_stat_fun,
+        n_permutations=n_permutations,
+        threshold=threshold,
+        n_jobs=n_jobs)
 
     p_values = p_values.reshape(X.shape[1:])
 
@@ -133,8 +131,6 @@ def run_gat(subj, decoder="ridge", n_jobs=2):
     Parameters
     ----------
     subj: int
-    name: str
-        Name (pseudonym) of individual subject.
     decoder: str
         Specify type of classifier -'ridge' for Ridge Regression (default),
         'lin-svm' for linear SVM 'svm' for nonlinear (RBF) SVM and 'log_reg'
@@ -219,7 +215,8 @@ def run_gat(subj, decoder="ridge", n_jobs=2):
     return scores, preds, patterns
 
 
-def get_p_scores(scores, chance=.5, tfce=False, n_jobs=2):
+def get_p_scores(scores, chance=.5,
+                 tfce=False, permutations=1000, threshold=None, n_jobs=1):
     """
     Calculate p_values from scores for significance masking using either
     TFCE or FDR.
@@ -233,9 +230,20 @@ def get_p_scores(scores, chance=.5, tfce=False, n_jobs=2):
     tfce: True | False
         Specify whether to Threshold Free Cluster Enhancement (True)
         or FDR (False)
+    permutations: int
+        The number of permutations to compute.
+    threshold: float | dict | None
+        Threshold that needs to be exceeded to achieve significance
+    n_jobs: int
+        The number of jobs to run in parallel (default 1). Requires the
+        joblib package.
+
     """
     p_values = (parallel_stats(scores - chance, n_jobs=n_jobs) if tfce is False
-                else stats_tfce(scores - chance, n_jobs=n_jobs))
+                else stats_tfce(scores - chance,
+                                n_permutations=permutations,
+                                threshold=threshold,
+                                n_jobs=n_jobs))
     return p_values
 
 

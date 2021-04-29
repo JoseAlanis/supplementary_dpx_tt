@@ -21,7 +21,7 @@ from mne.epochs import equalize_epoch_counts
 from mne import read_epochs, make_forward_solution, compute_covariance
 
 # All parameters are defined in config.py
-from config import subjects, fname, LoggingFormat, n_jobs
+from config import subjects, fname, LoggingFormat
 
 # load MNE's built-in fsaverage transformation
 trans = 'fsaverage'
@@ -82,10 +82,10 @@ for subj in subjects:
 
     # compute covariance for the baseline period (i.e., noise)
     # cue A epochs
-    noise_cov_a = compute_covariance(a_epo, tmin=-0.3, tmax=-0.01,
+    noise_cov_a = compute_covariance(a_epo, tmin=-0.3, tmax=-0.05,
                                      method='shrunk')
     # cue B epochs
-    noise_cov_b = compute_covariance(b_epo, tmin=-0.3, tmax=-0.01,
+    noise_cov_b = compute_covariance(b_epo, tmin=-0.3, tmax=-0.05,
                                      method='shrunk')
 
     # compute ERP
@@ -96,11 +96,11 @@ for subj in subjects:
     fwd_a = make_forward_solution(a_epo.info,
                                   trans=trans, src=src, bem=bem,
                                   meg=False, eeg=True,
-                                  mindist=5.0, n_jobs=n_jobs)
+                                  mindist=5.0, n_jobs=2)
     fwd_b = make_forward_solution(b_epo.info,
                                   trans=trans, src=src, bem=bem,
                                   meg=False, eeg=True,
-                                  mindist=5.0, n_jobs=n_jobs)
+                                  mindist=5.0, n_jobs=2)
 
     # compute LCMV spatial filters
     filters_a = make_lcmv(evoked_a.info,
