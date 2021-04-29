@@ -15,7 +15,7 @@ import pickle
 
 import numpy as np
 
-from nilearn.plotting import plot_glass_brain, plot_stat_map
+from nilearn.plotting import plot_glass_brain
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -55,7 +55,7 @@ stc_average_b.data = np.average([s.copy().data for s in stcs['cue_b']], axis=0)
 
 ###############################################################################
 # 2) compute average of source estimates
-lims = [0.2, 0.3, 0.4]
+lims = [0.05, 0.075, 0.1]
 clim = dict(kind='value', lims=lims)
 scale_pts = np.array(lims)
 colormap = plt.get_cmap('magma_r')
@@ -65,7 +65,10 @@ colormap = colormap(
               [0, 0.5, 1]))
 colormap = colors.ListedColormap(colormap)
 
-peak_stc = stc_average_a.copy().crop(tmin=0.20, tmax=0.20)
+peak_stc_b = stc_average_b.copy().crop(tmin=0.2, tmax=0.2)
+peak_stc_a = stc_average_b.copy().crop(tmin=0.2, tmax=0.2)
+peak_stc = peak_stc_b - peak_stc_b
+
 img = peak_stc.as_volume(src_fs, mri_resolution=False)
 
 fig = plt.figure(figsize=(6, 2.5))

@@ -62,3 +62,24 @@ def plot_z_scores(z_scores, channels, bads=None, cmap='inferno', show=False):
     plt.close(fig)
 
     return fig.show() if show else fig
+
+
+def _connection_line(x, fig, sourceax, targetax, y=1.0,
+                     y_source_transform="transAxes"):
+    """Connect source and target plots with a line.
+    Connect source and target plots with a line, such as time series
+    (source) and topolots (target). Primarily used for plot_joint
+    functions.
+    """
+    from matplotlib.lines import Line2D
+    trans_fig = fig.transFigure
+    trans_fig_inv = fig.transFigure.inverted()
+
+    xt, yt = trans_fig_inv.transform(targetax.transAxes.transform([.35, 1.075]))
+    xs, _ = trans_fig_inv.transform(sourceax.transData.transform([x, 0.]))
+    _, ys = trans_fig_inv.transform(getattr(sourceax, y_source_transform
+                                            ).transform([0., y]))
+
+    return Line2D((xt, xs), (yt, ys), transform=trans_fig, color='black',
+                  linestyle='-', linewidth=1.5, alpha=.95, zorder=1,
+                  clip_on=False)

@@ -16,13 +16,13 @@ from scipy.stats import ttest_rel
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import Normalize
+font = 'Mukta'  # noqa
 
 from mne import read_epochs, combine_evoked, grand_average
-from mne.channels import make_1020_channel_selections
-from mne.viz import plot_compare_evokeds, plot_brain_colorbar
+from mne.viz import plot_compare_evokeds
+from mne.viz.utils import _connection_line
 
 # All parameters are defined in config.py
 from config import subjects, fname, LoggingFormat
@@ -84,8 +84,8 @@ for subj in subjects:
 
 
 # plot latency effects
-plt.hist(lat_a, 10, alpha=0.5, label='Cue A')
-plt.hist(lat_b, 10, alpha=0.5, label='Cue B')
+plt.hist(lat_a, 20, alpha=0.5, label='Cue A')
+plt.hist(lat_b, 20, alpha=0.5, label='Cue B')
 plt.legend(loc='upper left')
 plt.savefig(fname.figures + '/N170_peak_latency.pdf', dpi=300)
 plt.close()
@@ -101,12 +101,12 @@ ga_b_cue = grand_average(list(b_erps.values()))
 ###############################################################################
 # 4) plot global field power
 gfp_times = {'t1': [0.07, 0.07],
-             't2': [0.14, 0.10],
-             't3': [0.24, 0.12],
-             't4': [0.36, 0.24],
-             't5': [0.60, 0.15],
-             't6': [0.75, 0.25],
-             't7': [2.00, 0.50]}
+             't2': [0.14, 0.11],
+             't3': [0.25, 0.14],
+             't4': [0.39, 0.36],
+             # 't5': [0.60, 0.15],
+             't6': [0.90, 0.20],
+             't7': [2.00, 0.45]}
 
 # create evokeds dict
 evokeds = {'Cue A': ga_a_cue.copy().crop(tmin=-0.25),
@@ -115,39 +115,44 @@ evokeds = {'Cue A': ga_a_cue.copy().crop(tmin=-0.25),
 # use viridis colors
 colors = np.linspace(0, 1, len(gfp_times.values()))
 cmap = cm.get_cmap('viridis')
+plt.rcParams.update({'mathtext.default':  'regular'})
 # plot GFP and save figure
-fig, ax = plt.subplots(figsize=(8, 3))
+fig, ax = plt.subplots(figsize=(7, 3))
 plot_compare_evokeds(evokeds,
                      axes=ax,
                      linestyles={'Cue A': '-', 'Cue B': '--'},
-                     styles={'Cue A': {"linewidth": 2.0},
-                             'Cue B': {"linewidth": 2.0}},
+                     styles={'Cue A': {"linewidth": 1.5},
+                             'Cue B': {"linewidth": 1.5}},
                      ylim=dict(eeg=[-0.1, 4.0]),
                      colors={'Cue A': 'k', 'Cue B': 'crimson'},
                      show=False)
+ax.set_title('A) Cue evoked GFP', size=14.0, pad=20.0, loc='left',
+             fontweight='bold', fontname=font)
+ax.set_xlabel('Time (ms)', labelpad=10.0, font=font, fontsize=12.0)
 ax.set_xticks(list(np.arange(-.25, 2.55, 0.25)), minor=False)
-ax.set_xticklabels(list(np.arange(-250, 2550, 250)))
-ax.set_xlabel('Time (ms)')
+ax.set_xticklabels(list(np.arange(-250, 2550, 250)), fontname=font)
+ax.set_ylabel(r'$\mu$V', labelpad=10.0, font=font, fontsize=12.0)
 ax.set_yticks(list(np.arange(0, 5, 1)), minor=False)
+ax.set_yticklabels(list(np.arange(0, 5, 1)), fontname=font)
 # annotate the gpf plot and tweak it's appearance
 for i, val in enumerate(gfp_times.values()):
-    ax.bar(val[0], 5, width=val[1], alpha=0.20,
+    ax.bar(val[0], 3.9, width=val[1], alpha=0.30,
            align='edge', color=cmap(colors[i]))
-ax.annotate('t1', xy=(0.070, 4.), weight="bold")
-ax.annotate('t2', xy=(0.155, 4.), weight="bold")
-ax.annotate('t3', xy=(0.270, 4.), weight="bold")
-ax.annotate('t4', xy=(0.450, 4.), weight="bold")
-ax.annotate('t5', xy=(0.635, 4.), weight="bold")
-ax.annotate('t6', xy=(0.845, 4.), weight="bold")
-ax.annotate('t7', xy=(2.230, 4.), weight="bold")
-ax.legend(loc='upper right', framealpha=1)
+ax.annotate('t1', xy=(0.070, 4.), weight="bold", fontname=font)
+ax.annotate('t2', xy=(0.155, 4.), weight="bold", fontname=font)
+ax.annotate('t3', xy=(0.295, 4.), weight="bold", fontname=font)
+ax.annotate('t4', xy=(0.540, 4.), weight="bold", fontname=font)
+# ax.annotate('t5', xy=(0.635, 4.), weight="bold")
+ax.annotate('t5', xy=(0.975, 4.), weight="bold", fontname=font)
+ax.annotate('t6', xy=(2.220, 4.), weight="bold", fontname=font)
+ax.legend(loc='upper right', framealpha=1, prop={"family": font})
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.spines['left'].set_bounds(0, 4)
 ax.spines['bottom'].set_bounds(-0.25, 2.5)
-ax.xaxis.set_label_coords(0.5, -0.175)
-fig.subplots_adjust(bottom=0.2)
+fig.subplots_adjust(bottom=0.20, top=0.80)
 fig.savefig(fname.figures + '/GFP_evoked_cues.pdf', dpi=300)
+plt.close('all')
 
 ###############################################################################
 # 5) plot condition ERPs
@@ -164,7 +169,8 @@ topomap_args = dict(sensors=False,
                     time_unit='ms',
                     vmin=8, vmax=-8,
                     average=0.05,
-                    extrapolate='head')
+                    extrapolate='head',
+                    outlines='head')
 
 # plot activity pattern evoked by the cues
 for evoked in evokeds:
@@ -174,173 +180,258 @@ for evoked in evokeds:
                                      topomap_args=topomap_args,
                                      title=title,
                                      show=False)
-    fig.axes[-1].texts[0]._fontproperties._size=12.0  # noqa
-    fig.axes[-1].texts[0]._fontproperties._weight='bold'  # noqa
+
+    fig.axes[-1].texts[0]._fontproperties._size = 14.0  # noqa
+    fig.axes[-1].texts[0]._fontproperties._weight = 'bold' # noqa
+    fig.axes[-1].texts[0]._fontproperties._family = font # noqa
+
+    for nt, tt in enumerate(ttp):
+        ms = int(tt * 1000)
+        fig.axes[nt+1].set_title('%s $_{ms}$' % ms, fontname=font)
+
+    fig.axes[0].tick_params(axis='both', which='major', labelsize=12)
+
+    fig.axes[0].set_xlabel('Time (ms)', labelpad=10.0, font=font, fontsize=14.0)
     fig.axes[0].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-    fig.axes[0].set_xticklabels(list(np.arange(-250, 2550, 250)))
-    fig.axes[0].set_xlabel('Time (ms)')
+    fig.axes[0].set_xticklabels(list(np.arange(-250, 2550, 250)), fontname=font)
+
+    fig.axes[0].set_ylabel(r'$\mu$V',  labelpad=10.0, font=font, fontsize=14.0)
     fig.axes[0].set_yticks(list(np.arange(-8, 8.5, 4)), minor=False)
+    fig.axes[0].set_yticklabels(list(np.arange(-8, 8.5, 4)), fontname=font)
+
     fig.axes[0].axhline(y=0, xmin=-.5, xmax=2.5,
                         color='black', linestyle='dashed', linewidth=.8)
     fig.axes[0].axvline(x=0, ymin=-5, ymax=5,
                         color='black', linestyle='dashed', linewidth=.8)
+
     fig.axes[0].spines['top'].set_visible(False)
     fig.axes[0].spines['right'].set_visible(False)
     fig.axes[0].spines['left'].set_bounds(-8, 8)
     fig.axes[0].spines['bottom'].set_bounds(-.25, 2.5)
-    fig.axes[0].xaxis.set_label_coords(0.5, -0.2)
+
     w, h = fig.get_size_inches()
-    fig.set_size_inches(w * 1.15, h * 1.15)
+    fig.set_size_inches(w * 1.0, h * 1.0)
+
     fig_name = fname.figures + '/Evoked_%s.pdf' % evoked.replace(' ', '_')
     fig.savefig(fig_name, dpi=300)
+    plt.close('all')
 
 ###############################################################################
 # 6) plot difference wave (Cue B - Cue A)
 
 # compute difference wave
 ab_diff = combine_evoked([ga_b_cue, -ga_a_cue], weights='equal')
+# mask differences that are below 0.5 micro volt
+mask = abs(ab_diff.data) >= 1.0e-6
 
-# make channel ROIs for easier interpretation of the plot
-selections = make_1020_channel_selections(ga_a_cue.info, midline='12z')
+# spatially defined rois for plot
+rois = {
+    'Frontal':
+        ['F8', 'F6', 'F4', 'F2', 'Fz',
+         'AF8', 'AF4', 'AFz',
+         'Fp2', 'Fpz', 'Fp1',
+         'AF3', 'AF7',
+         'F1', 'F3', 'F5', 'F7'],
+    'Central':
+        ['C6',  'C4', 'C2', 'Cz',
+         'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
+         'FC1',  'FC3', 'FC5', 'FT7',
+         'C1',  'C3', 'C5',
+         ],
+    'Parietal':
+        ['P8', 'P6', 'P4', 'P2', 'Pz',
+         'CP6',  'CP4',  'CP2', 'CPz',
+         'CP1',  'CP3', 'CP5',
+         'P1', 'P3', 'P5', 'P7',
+         ],
+    'Occipital':
+        ['P10', 'PO8', 'PO4',
+         'O2', 'Oz', 'O1',
+         'PO3', 'PO7', 'P9']
+}
 
 # get colormap and create figure
 colormap = cm.get_cmap('RdBu_r')
-fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(23, 5.5))
-for s, selection in enumerate(selections):
-    picks = selections[selection]
 
-    mask = abs(ab_diff.data) > 1.1e-6
+# create figure grid
+fig = plt.figure(figsize=(7, 13))
+axes = [plt.subplot2grid((40, 9), (0, 0), rowspan=8, colspan=5),
+        plt.subplot2grid((40, 9), (11, 0), rowspan=8, colspan=5),
+        plt.subplot2grid((40, 9), (22, 0), rowspan=8, colspan=5),
+        plt.subplot2grid((40, 9), (33, 0), rowspan=6, colspan=5),
 
+        plt.subplot2grid((40, 9), (0, 5), rowspan=6, colspan=4),
+        plt.subplot2grid((40, 9), (11, 5), rowspan=6, colspan=4),
+        plt.subplot2grid((40, 9), (22, 5), rowspan=6, colspan=4),
+        plt.subplot2grid((40, 9), (33, 5), rowspan=6, colspan=4),
+
+        plt.subplot2grid((40, 9), (39, 6), rowspan=1, colspan=2)
+        ]
+
+for p, pick in enumerate(rois.keys()):
     ab_diff.plot_image(xlim=[-0.25, 2.5],
-                       picks=picks,
-                       clim=dict(eeg=[-5, 5]),
+                       clim=dict(eeg=[-3, 3]),
                        colorbar=False,
-                       axes=ax[s],
-                       # mask=mask,
+                       mask=mask,
                        mask_cmap='RdBu_r',
                        mask_alpha=0.5,
-                       show=False)
-    # tweak plot appearance
-    if selection in {'Left', 'Right'}:
-        title = selection + ' hemisphere'
-    else:
-        title = 'Midline'
-    ax[s].title._text = title # noqa
-    ax[s].set_ylabel('Channels', labelpad=10.0,
-                     fontsize=11.0, fontweight='bold')
+                       show=False,
+                       axes=axes[p],
+                       picks=rois[pick])
 
-    ax[s].set_xlabel('Time (s)',
-                     labelpad=10.0, fontsize=11.0, fontweight='bold')
+    # add line marking stimulus presentation
+    axes[p].axvline(x=0, ymin=0, ymax=len(rois[pick]),
+                    color='black', linestyle='dashed', linewidth=1.0)
 
-    ax[s].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-    ax[s].set_xticklabels(list(np.arange(-250, 2550, 250)), rotation=45)
-    ax[s].set_xlabel('Time (ms)')
-    ax[s].set_yticks(np.arange(len(picks)), minor=False)
-    labels = [ga_a_cue.ch_names[i] for i in picks]
-    ax[s].set_yticklabels(labels, minor=False)
-    ax[s].spines['top'].set_visible(False)
-    ax[s].spines['right'].set_visible(False)
-    ax[s].spines['left'].set_bounds(-0.5, len(picks)-0.5)
-    ax[s].spines['bottom'].set_bounds(-.25, 2.5)
-    ax[s].texts = []
+    title = ['A) %s', 'B) %s', 'C) %s', 'D) %s']
+    # add title according to specific region
+    axes[p].set_title(title[p] % pick, loc='left', pad=10.0,
+                      size=14.0, fontweight='bold', fontname=font)
+    axes[p].set_title('', loc='center', pad=10.0,
+                      size=14.0, fontweight='bold', fontname=font)
 
-    # add intercept line (at 0 s) and customise figure boundaries
-    ax[s].axvline(x=0, ymin=0, ymax=len(picks),
-                  color='black', linestyle='dashed', linewidth=1.0)
+    # axis labels
+    axes[p].set_ylabel('EEG sensors', labelpad=10.0, fontsize=10.5)
+    axes[p].set_xlabel('Time (s)', labelpad=5.0, fontsize=11.0)
 
-    orientation = 'vertical'
-    norm = Normalize(vmin=-5.0, vmax=5.0)
-    divider = make_axes_locatable(ax[s])
-    cax = divider.append_axes('right', size='3%', pad=0.2)
-    cbar = ColorbarBase(cax, cmap=colormap,
-                        ticks=[-5.0, -2.5, 0., 2.5, 5.0], norm=norm,
-                        label=r'Difference B-A ($\mu$V)',
-                        orientation=orientation)
-    cbar.outline.set_visible(False)
-    cbar.ax.set_frame_on(True)
-    label = r'Difference B-A (in $\mu V$)'
-    for key in ('left', 'top',
-                'bottom' if orientation == 'vertical' else 'right'):
-        cbar.ax.spines[key].set_visible(False)
+    # specify tick label size
+    axes[p].tick_params(axis='both', which='major', labelsize=10)
+    axes[p].tick_params(axis='both', which='minor', labelsize=8)
 
-    fig.subplots_adjust(
-        left=0.05, right=0.95, bottom=0.15, wspace=0.3, hspace=0.25)
-# save figure
-fig.savefig(fname.figures + '/Diff_A-B_image.pdf', dpi=300)
+    # add axis ticks
+    axes[p].set_xticks(list(np.arange(-.250, 2.550, .250)))
+    axes[p].set_xticklabels(list(np.arange(-250, 2550, 250)),
+                            rotation=45, fontname=font)
 
-# ** plot topography of the difference wave **
-# variables for plot
-ttp = [0.20, 0.30, 0.60, 0.80, 1.0, 1.5, 2.30]
-lims = [-5.0, 0.0, 5.0]
-clim = dict(kind='value', lims=lims)
+    axes[p].set_yticks(np.arange(0, len(rois[pick]), 1))
+    axes[p].set_yticklabels(rois[pick], fontname=font)
 
-# create plot
-fig = plt.figure(figsize=(15, 2.0))
-axes = [plt.subplot2grid((6, 23), (0, 0), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (0, 3), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (0, 6), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (0, 9), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (0, 12), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (0, 15), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (0, 18), rowspan=6, colspan=3),
-        plt.subplot2grid((6, 23), (1, 22), rowspan=4, colspan=1)]
-for ti, t in enumerate(ttp):
-    ab_diff.plot_topomap(times=t,
-                         average=0.05,
-                         vmin=-5, vmax=5,
+    axes[p].spines['top'].set_visible(False)
+    axes[p].spines['right'].set_visible(False)
+    axes[p].spines['left'].set_bounds(0, len(rois[pick])-1)
+    axes[p].spines['left'].set_linewidth(1.5)
+    axes[p].spines['bottom'].set_bounds(-0.250, 2.500)
+    axes[p].spines['bottom'].set_linewidth(1.5)
+
+    # if any additional text in fig
+    for text in axes[p].texts:
+        text.set_visible(False)
+
+# plot topomaps for times of interest
+ttp = [0.550, 0.600, 0.350, 0.200]
+for nt, tp in enumerate(ttp):
+    ab_diff.plot_topomap(times=tp,
+                         mask=mask,
+                         mask_params=dict(marker='o', markerfacecolor='w',
+                                          markeredgecolor='k',
+                                          linewidth=0, markersize=8),
+                         average=0.02,
+                         vmin=-3.0, vmax=3.0,
                          extrapolate='head',
                          colorbar=False,
-                         axes=axes[ti],
+                         axes=axes[len(rois)+nt],
                          show=False)
-plot_brain_colorbar(axes[-1], clim, 'RdBu_r', label='Difference Cue B - Cue A',
-                    bgcolor='darkblue')
-fig.savefig(fname.figures + '/Diff_Topomaps.pdf', dpi=300)
+    axes[len(rois)+nt].set_title('%s $_{ms}$' % int((tp * 1000)),
+                                 size=16, fontname=font, weight='bold')
+
+orientation = 'horizontal'
+norm = Normalize(vmin=-3.0, vmax=3.0)
+cbar = ColorbarBase(axes[-1],
+                    cmap=colormap,
+                    ticks=[-3.0, -1.5, 0., 1.5, 3.0],
+                    norm=norm,
+                    orientation=orientation)
+cbar.outline.set_visible(False)
+cbar.ax.set_frame_on(True)
+cbar.ax.tick_params(labelsize=9)
+cbar.set_label(label=r'Difference B-A ($\mu$V)', font=font, size=12)
+for key in ('left', 'top',
+            'bottom' if orientation == 'vertical' else 'right'):
+    cbar.ax.spines[key].set_visible(False)
+for tk in cbar.ax.yaxis.get_ticklabels():
+    tk.set_family(font)
+
+fig.subplots_adjust(
+    left=0.100, right=1.000, bottom=0.04, top=0.970,
+    wspace=0.1, hspace=0.5)
+
+# connection lines
+# draw the connection lines between time series and topoplots
+lines = [_connection_line(timepoint, fig, axes[ts_ax_], axes[map_ax_])
+         for timepoint, ts_ax_, map_ax_ in zip(ttp, [0, 1, 2, 3], [4, 5, 6, 7])]
+for line in lines:
+    fig.lines.append(line)
+
+# mark times in time series plot
+for ts_ax, timepoint in enumerate(ttp):
+    height = axes[ts_ax].get_ylim()[-1] + 0.5
+
+    axes[ts_ax].bar(timepoint, height=height, width=0.05, bottom=-0.5,
+                    alpha=1.0, align='center',
+                    linewidth=1.5, color='None', edgecolor='k')
+
+fig_name = fname.figures + '/Evoked_Diff_Wave.pdf'
+fig.savefig(fig_name, dpi=300)
+plt.close('all')
 
 ###############################################################################
 # 7) Plot ERPs for individual electrodes of interest
 cis = within_subject_cis([a_erps, b_erps])
 
-for electrode in ['FCz', 'FC1', 'FC3', 'Cz', 'C1', 'C3',
-                  'Pz', 'Oz', 'PO8', 'PO7']:
+fig = plt.figure(figsize=(16, 4))
+axes = [plt.subplot2grid((5, 20), (0, 0), rowspan=5, colspan=6),
+        plt.subplot2grid((5, 20), (0, 7), rowspan=5, colspan=6),
+        plt.subplot2grid((5, 20), (0, 14), rowspan=5, colspan=6)]
+for ne, electrode in enumerate(['FC1', 'Pz', 'PO8']):
     pick = ga_a_cue.ch_names.index(electrode)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
+    # fig, ax = plt.subplots(figsize=(5, 4))
     plot_compare_evokeds({'Cue A': ga_a_cue.copy().crop(-0.25, 2.5),
                           'Cue B': ga_b_cue.copy().crop(-0.25, 2.5)},
-                         vlines=[],
                          picks=pick,
                          invert_y=False,
-                         ylim=dict(eeg=[-8.5, 8.5]),
+                         ylim=dict(eeg=[-8.5, 6.5]),
                          colors={'Cue A': 'k', 'Cue B': 'crimson'},
-                         axes=ax,
+                         axes=axes[ne],
                          truncate_xaxis=False,
                          show_sensors='upper right',
                          show=False)
-    ax.axhline(y=0, xmin=-.25, xmax=2.5,
-               color='black', linestyle='dotted', linewidth=.8)
-    ax.axvline(x=0, ymin=-8.5, ymax=8.5,
-               color='black', linestyle='dotted', linewidth=.8)
-    ax.fill_between(ga_a_cue.times,
-                    (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
-                    (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
-                    alpha=0.2,
-                    color='k')
-    ax.fill_between(ga_b_cue.times,
-                    (ga_b_cue.data[pick] + cis[1, pick, :]) * 1e6,
-                    (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
-                    alpha=0.2,
-                    color='crimson')
-    ax.legend(loc='upper left', framealpha=1)
-    ax.set_xlabel('Time (s)', labelpad=10.0, fontsize=11.0)
-    ax.set_ylim(-8.5, 8.5)
-    ax.set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
-    ax.set_yticks(list(np.arange(-8, 8.5, 2)), minor=False)
-    ax.set_xticklabels([str(lab) for lab in np.arange(-.25, 2.55, .25)],
-                       minor=False)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_bounds(-8, 8)
-    ax.spines['bottom'].set_bounds(-.25, 2.5)
-    fig.subplots_adjust(bottom=0.15)
-    fig.savefig(fname.figures + '/ERP_AB_%s.pdf' % electrode,
-                dpi=300)
+    axes[ne].fill_between(ga_a_cue.times,
+                          (ga_a_cue.data[pick] + cis[0, pick, :]) * 1e6,
+                          (ga_a_cue.data[pick] - cis[0, pick, :]) * 1e6,
+                          alpha=0.2,
+                          color='k')
+    axes[ne].fill_between(ga_b_cue.times,
+                          (ga_b_cue.data[pick] + cis[1, pick, :]) * 1e6,
+                          (ga_b_cue.data[pick] - cis[1, pick, :]) * 1e6,
+                          alpha=0.2,
+                          color='crimson')
+
+    axes[ne].set_title('%s' % electrode, loc='center', pad=5.0,
+                       size=14.0, fontweight='bold', fontname=font)
+
+    axes[ne].legend(loc='lower right', framealpha=1, prop={"family": font})
+
+    axes[ne].set_ylabel(r'$\mu$V', labelpad=10.0, font=font, fontsize=12.0)
+    axes[ne].set_yticks(list(np.arange(-8, 6.5, 2)), minor=False)
+    axes[ne].set_yticklabels(np.arange(-8, 6.5, 2), fontname=font)
+
+    axes[ne].set_xlabel('Time (s)', labelpad=10.0, font=font, fontsize=12.0)
+    axes[ne].set_xticks(list(np.arange(-.25, 2.55, .25)), minor=False)
+    axes[ne].set_xticklabels(list(np.arange(-250, 2550, 250)),
+                             rotation=45, fontname=font, size=11.0)
+
+    axes[ne].axhline(y=0, xmin=-.25, xmax=2.5,
+                     color='black', linestyle='dotted', linewidth=.8)
+    axes[ne].axvline(x=0, ymin=-8.5, ymax=6.5,
+                     color='black', linestyle='dotted', linewidth=.8)
+
+    axes[ne].spines['top'].set_visible(False)
+    axes[ne].spines['right'].set_visible(False)
+    axes[ne].spines['left'].set_bounds(-8, 6)
+    axes[ne].spines['bottom'].set_bounds(-.25, 2.5)
+
+fig.subplots_adjust(left=0.05, right=0.95, top=0.90, bottom=0.25,
+                    wspace=0.5, hspace=0.5)
+fig.savefig(fname.figures + '/ERPs_ci_AB.pdf', dpi=300)
+plt.close('all')

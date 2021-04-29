@@ -100,7 +100,8 @@ topomap_args = dict(sensors=False,
                     time_unit='ms',
                     vmin=7, vmax=-7,
                     average=0.05,
-                    extrapolate='head')
+                    extrapolate='head',
+                    outlines='head')
 
 # create plot
 title = 'Regression coefficients (B - A, 64 EEG channels)'
@@ -147,9 +148,10 @@ topomap_args = dict(cmap='magma_r',
                     scalings=dict(eeg=1),
                     sensors=False,
                     time_unit='ms',
-                    vmin=0.0, vmax=0.05,
+                    vmin=0.0, vmax=0.06,
                     average=0.05,
-                    extrapolate='head')
+                    extrapolate='head',
+                    outlines='head')
 
 # create R-squared plot
 title = 'Proportion of variance explained by cue type'
@@ -207,10 +209,88 @@ sig_mask = sig_mask.reshape((n_channels, n_times))
 # create evoked object containing the resulting t-values
 group_t = dict()
 group_t['effect of cue (B-A)'] = EvokedArray(t_vals, epochs_info, tmin)
+channels = group_t['effect of cue (B-A)'].ch_names
+
+gfp_times = {'t1': [0.07, 0.07],
+             't2': [0.14, 0.11],
+             't3': [0.25, 0.14],
+             't4': [0.39, 0.36],
+             # 't5': [0.60, 0.15],
+             't6': [0.90, 0.20],
+             't7': [2.00, 0.45]}
+# use viridis colors
+colors = np.linspace(0, 1, len(gfp_times.values()))
+cmap = cm.get_cmap('viridis')
+
+# initialise plot
+fig, ax = plt.subplots(figsize=(7, 11))
+fig.subplots_adjust(
+    left=0.15, right=0.95, bottom=0.10, top=0.95, wspace=0.3, hspace=0.25)
+font = 'Arial'
+group_t['effect of cue (B-A)'].plot_image(xlim=[-0.250, 2.500],
+                                          clim=dict(eeg=[-12, 12]),
+                                          colorbar=False,
+                                          axes=ax,
+                                          mask=sig_mask,
+                                          mask_cmap='RdBu_r',
+                                          mask_alpha=0.5,
+                                          show=False,
+                                          unit=False,
+                                          # keep values scale
+                                          scalings=dict(eeg=1),
+                                          )
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_bounds(0, 63)
+ax.spines['left'].set_linewidth(1.5)
+ax.spines['bottom'].set_bounds(-0.250, 2.500)
+ax.spines['bottom'].set_linewidth(1.5)
+
+# customize title and axis texts
+title = 'Effect of cue (B-A)'
+ax.set_title(title, fontname=font,
+             size=16.0, pad=15.0,  fontweight='bold')
+ax.set_ylabel('EEG sensors', fontname=font,
+              fontsize=14.0, labelpad=15.0,  fontweight='bold')
+ax.set_xlabel('Time (ms)', fontname=font,
+              fontsize=14.0, labelpad=15.0,  fontweight='bold')
+
+# Specify tick label size
+ax.tick_params(axis='both', which='major', labelsize=12)
+ax.tick_params(axis='both', which='minor', labelsize=8)
+
+# add axis ticks
+ax.set_xticks(list(np.arange(-.250, 2.550, .250)))
+ax.set_xticklabels(list(np.arange(-250, 2550, 250)), rotation=45,
+                   fontname=font)
+
+ax.set_yticks(np.arange(0, len(channels), 5))
+y_labs = [channels[i] for i in np.arange(0, len(channels), 5)]
+ax.set_yticklabels(y_labs, fontname=font, fontweight='bold')
+
+ax.set_yticks(np.arange(0, len(channels), 1), minor=True)
+y_labs = [channels[i] for i in np.arange(0, len(channels), 1)]
+ax.set_yticklabels(y_labs, fontname=font, minor=True)
+
+ax.axvline(x=0, color='black', linestyle='dotted')
+# if any additional text in fig
+for text in ax.texts:
+    text.set_visible(False)
+
+for i, val in enumerate(gfp_times.values()):
+    ax.add_patch(plt.Rectangle((val[0], -1.5), val[1], 1.0,
+                               facecolor=cmap(colors[i]),
+                               clip_on=False, linewidth=0, alpha=0.50))
+
+
+
+fig.subplots_adjust(
+    left=0.15, right=0.95, bottom=0.15, wspace=0.3, hspace=0.25)
+
+
 
 # initialise plot
 fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(23, 5.5))
-
 # plot channel ROIs
 for s, selection in enumerate(selections):
     picks = selections[selection]

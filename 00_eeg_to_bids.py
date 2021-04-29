@@ -19,7 +19,7 @@ from mne import find_events, Annotations, open_report
 from mne_bids import write_raw_bids, BIDSPath
 
 # All parameters are defined in config.py
-from config import fname, exclude, task_name, montage, parser, LoggingFormat
+from config import fname, task_name, montage, parser, LoggingFormat
 
 ###############################################################################
 # Start processing step
@@ -34,11 +34,10 @@ print(LoggingFormat.PURPLE +
       LoggingFormat.END)
 
 ###############################################################################
-input_file = fname.source(source_type='eeg', subject=subject)
 # 1) Import the data
+input_file = fname.source(source_type='eeg', subject=subject)
 raw = read_raw_bdf(input_file,
-                   preload=False,
-                   exclude=exclude)
+                   preload=False)
 
 # sampling rate
 sfreq = raw.info['sfreq']
@@ -49,16 +48,16 @@ channels = raw.info['ch_names']
 # 2) Modify dataset info
 # identify channel types based on matching names in montage
 types = []
-for chan in channels:
-    if chan in montage.ch_names:
+for channel in channels:
+    if channel in montage.ch_names:
         types.append('eeg')
-    elif chan.startswith('EOG') | chan.startswith('EXG'):
+    elif channel.startswith('EOG') | channel.startswith('EXG'):
         types.append('eog')
     else:
         types.append('stim')
 
 # add channel types and eeg-montage
-raw.set_channel_types({chan: typ for chan, typ in zip(channels, types)})
+raw.set_channel_types({channel: typ for channel, typ in zip(channels, types)})
 raw.set_montage(montage)
 
 # compute approx. date of birth
@@ -87,22 +86,23 @@ raw.info['subject_info'] = dict(id=subject,
 
 # frequency of power line
 raw.info['line_freq'] = 50.0
-raw.info['lowpass'] = raw.info['sfreq'] / 2
+raw.info['lowpass'] = sfreq / 2
 
 ###############################################################################
-# 4) Create events info
+# 3) Create events info
 # extract events
 events = find_events(raw,
                      stim_channel='Status',
                      output='onset',
                      min_duration=0.001)
 
-# 6) Extract events from the status channel and save them as file annotations
+###############################################################################
+# 4) Extract events from the status channel and save them as file annotations
 # events to data frame
 events = pd.DataFrame(events,
                       columns=['onset', 'duration', 'description'])
 # onset to seconds
-events['onset_in_s'] = events['onset'] / raw.info['sfreq']
+events['onset_in_s'] = events['onset'] / sfreq
 # sort by onset
 events = events.sort_values(by=['onset_in_s'])
 # only keep relevant events
@@ -111,8 +111,7 @@ events = events.loc[(events['description'] <= 245)]
 # crate annotations object
 annotations = Annotations(events['onset_in_s'],
                           events['duration'],
-                          events['description'],
-                          orig_time=raw.info['meas_date'])
+                          events['description'])
 # apply to raw data
 raw.set_annotations(annotations)
 

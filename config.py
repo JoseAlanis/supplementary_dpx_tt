@@ -12,8 +12,10 @@ License: BSD (3-clause)
 import os
 from os import path as op
 import platform
+import multiprocessing
 
-import argparse
+from argparse import ArgumentParser
+
 import numpy as np
 
 from utils import FileNames
@@ -37,38 +39,43 @@ class LoggingFormat:
 
 ###############################################################################
 # User parser to handle command line arguments
-parser = argparse.ArgumentParser(description='Parse command line argument for '
-                                             'pre-processing of EEG data.')
-parser.add_argument('subject',
-                    metavar='sub###',
+parser = ArgumentParser(description='Parse command line argument for '
+                                    'pre-processing of EEG data.')
+parser.add_argument('-s', '--subject',
+                    metavar='sub-\\d+',
                     help='The subject to process',
                     type=int)
 
 # Determine which user is running the scripts on which machine. Set the path to
 # where the data is stored and determine how many CPUs to use for analysis.
-node = platform.node()  # Maschine
-system = platform.system()  # Os
+node = platform.node()
+system = platform.system()
 
 # You want to add your machine to this list
 if 'Jose' in node and 'n' in system:
-    # iMac at work
     data_dir = '../data'
-    n_jobs = 2  # iMac has 4 cores (we'll use 2).
+    n_jobs = 2
 elif 'jose' in node and 'x' in system:
     # pc at home
     data_dir = '../data'
-    n_jobs = 8  # My workstation has 16 cores (we'll use 8).
+    n_jobs = 'cuda'  # Use NVIDIA CUDA GPU processing
+elif 'ma04' in node:
+    # station at work
+    data_dir = '../data'
+    n_jobs = 2
 else:
-    # Defaults
+    # defaults
     data_dir = '../data'
     n_jobs = 1
 
 # For BLAS to use the right amount of cores
-os.environ['OMP_NUM_THREADS'] = str(n_jobs)
+use_cores = multiprocessing.cpu_count()//2
+if use_cores < 2:
+    use_cores = 1
+os.environ['OMP_NUM_THREADS'] = str(use_cores)
 
 ###############################################################################
 # Relevant parameters for the analysis.
-sampling_rate = 256.0  # Hz
 task_name = 'dpxtt'
 task_description = 'DPX, effects of time on task'
 # eeg channel names and locations

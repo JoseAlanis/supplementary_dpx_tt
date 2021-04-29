@@ -5,7 +5,7 @@ ready to run the analysis pipeline.
 import os
 import pkg_resources
 
-import argparse
+from argparse import ArgumentParser
 import json
 
 import mne
@@ -14,8 +14,8 @@ from config import fname
 from utils import validate_sourcedata
 
 # Handle command line arguments
-check_parser = argparse.ArgumentParser(description='Pars args for check system.')
-check_parser.add_argument('path', help='Path to validate.')
+check_parser = ArgumentParser(description='Pars args for check system.')
+check_parser.add_argument('-p', '--path', help='Path to validate.')
 args = check_parser.parse_args()
 parent_dir = args.path
 
