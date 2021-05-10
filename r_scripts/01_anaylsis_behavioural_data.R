@@ -8,14 +8,15 @@
 source('./r_functions/getPacks.R')
 source('./r_functions/spr2.R')
 
-
 # 1) define the path to behavioral data directory -----------------------------
 
 # get system and user information
 host <- Sys.info()
 
+check_sys <- grepl('jose', host['user']) & grepl('x|D', host['sysname'])
+
 # set default path or promt user for other path
-if (grep('jose', host['user']) & grep('x', host['sysname'])) {
+if (check_sys) {
 
   # defaut path in project structure
   path_to_rt <- '../data/derivatives/results'
@@ -25,7 +26,6 @@ if (grep('jose', host['user']) & grep('x', host['sysname'])) {
   path_to_rt <- readline('Please provide path to behavioral data: ')
 
 }
-
 
 # 2) import in the data -------------------------------------------------------
 # this part requires the package 'dplyr'
@@ -60,74 +60,80 @@ corrects <- rt_df %>%
 # e.g., only probes AX, AY, BX and BY should be present
 summary(corrects); unique(corrects$probe)
 
-# check distribution of rt
-hist(corrects$rt)
-
 # get rid of extreme values, e.g., rt values very close to 0
 # using winsorsed scores
 getPacks('psych')
 corrects <- corrects %>%
-  group_by(subject, block, probe) %>%
-  mutate(w_rt = winsor(rt, trim = 0.1))
+  group_by(subject, probe) %>%
+  mutate(w_rt = winsor(rt, trim = 0.05))
+
+# create aplot to compare the distributions
+pdf('../data/derivatives/results/figures/rt_dist.pdf',
+    height = 4, width = 8)
+par(mfrow=c(1, 2))
+# check distribution of rt
+hist(corrects$w_rt,
+     main ='5% Trimmed RT', xlab = 'RT',
+     breaks = 100, xlim = c(0, 0.8), ylim = c(0, 700))
+rug(corrects$w_rt)
+
+# check distribution of rt
+hist(corrects$rt,
+     main ='Raw RT', xlab = 'RT',
+     breaks = 100, xlim = c(0, 0.8), ylim = c(0, 700))
+rug(corrects$rt)
+dev.off()
 
 # ** some descriptive statistics **
 # mean rt and sd (trial type by block)
-corrects %>% group_by(probe, block) %>%
-  summarise(m = mean(rt), sd = sd(rt))
+# corrects %>% group_by(probe, block) %>%
+#   summarise(m = mean(rt), sd = sd(rt))
 # by trial type
 corrects %>% group_by(probe) %>%
-  summarise(m = mean(rt), sd = sd(rt))
+  summarise(m = mean(w_rt), sd = sd(w_rt))
 # by block
-corrects %>% group_by(block) %>%
-  summarise(m = mean(rt), sd = sd(rt))
+# corrects %>% group_by(block) %>%
+#   summarise(m = mean(rt), sd = sd(rt))
 # average number of trials
 corrects %>%
   group_by(subject, cue) %>%
-  summarise(n = sum(!is.na(rt))) %>%
+  summarise(n = sum(!is.na(w_rt))) %>%
   group_by(cue) %>%
-  summarise(mn = mean(n), sd = sd(n))
+  summarise(mn = mean(n), sd = sd(n)) %>%
+  as.data.frame()
 
 # *** plot distribution of reaction time ***
 getPacks(c('ggplot2', 'ggbeeswarm', 'viridis', 'Hmisc', 'see'))
 
-# data for plot
-m_rt <- corrects %>%
-  group_by(subject, probe, block) %>%
-  summarise(m = mean(rt))
-
+# prepare data for plot
 m_rt <- corrects %>%
   group_by(subject, probe) %>%
-  summarise(m = mean(rt))
+  summarise(m = mean(w_rt))
 
-# add some space between geoms
-#pjd <- position_jitterdodge(
-#  jitter.width = 0.5,
-#  jitter.height = 0,
-#  dodge.width = 0,
-#  seed = 2)
-pn <- position_nudge(x = 0.25)
-pd <- position_jitter(0.2)
-
+# create de plot
+pn <- position_nudge(x = 0.3)
 rt_plot <- ggplot(data = m_rt,
                   aes(x = probe, y = m,
                       fill = probe, shape = probe)) +
-  # geom_line(aes(group = subject), position = pd, alpha = 0.1, size = 0.4) +
-  # geom_quasirandom(varwidth = TRUE, dodge.width = 1) +
-  geom_beeswarm(size = 2) +
-  geom_violinhalf(position = pn, width = 0.75, alpha = 0.5) +
-  geom_boxplot(position = pn, width = 0.10, alpha = 1.0, outlier.shape = NA) +
-  # geom_point(position = pd) +
+  geom_beeswarm(size = 2, show.legend = T) +
+  geom_violinhalf(position = pn, width = 0.75, alpha = 0.5, show.legend = F) +
+  geom_boxplot(position = pn, width = 0.10, alpha = 1.0, outlier.shape = NA,
+               show.legend = F) +
   scale_shape_manual(values = c(21, 23, 24, 25)) +
   scale_y_continuous(limits = c(0.1, 0.8),
                      breaks = seq(0.1, 0.8, 0.1),
                      labels = seq(100, 800, 100)) +
+  scale_fill_brewer(palette = 'Set2') +
+  # scale_fill_viridis(option = 'E', discrete = T, begin = 0.15, end = 0.9) +
+  labs(x = 'Cue-Probe Combination',
+       y = 'RT (ms)') +
   geom_segment(aes(x = -Inf, y = 0.1, xend = -Inf, yend = 0.8),
                color = 'black', size = rel(0.5), linetype = 1) +
   geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf),
                color = 'black', size = rel(0.5), linetype = 1) +
-  theme(axis.title.x = element_text(color = 'black', size = 12,
+  theme(axis.title.x = element_text(color = 'black', size = 12, face = 'bold',
                                     margin = margin(t = 10)),
-        axis.title.y= element_text(color = 'black', size = 12,
+        axis.title.y= element_text(color = 'black', size = 12, face = 'bold',
                                    margin = margin(r = 10)),
         axis.text = element_text(color = 'black', size = 10),
         panel.background = element_rect(fill = 'white'),
@@ -144,47 +150,8 @@ rt_plot <- ggplot(data = m_rt,
   coord_flip(); rt_plot
 # save to disk
 ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
-       plot = rt_plot, width = 5, height = 3.5, dpi = 300)
+       plot = rt_plot, width = 5, height = 5, dpi = 300)
 
-
-
-# create the plot
-rt_plot <- ggplot(data = m_rt,
-                  aes(x = probe, y = m,
-                      fill = probe, shape = probe)) +
-  geom_line(aes(group = subject), position = pd, alpha = 0.1, size = 0.4) +
-  geom_point(position = pd) +
-  scale_shape_manual(values = c(25, 24, 23, 21)) +
-  geom_boxplot(position = pn, width = 0.15, alpha = 0.8) +
-  scale_fill_viridis(discrete = T, begin = 0.05, end = .95) +
-  labs(x = 'Cue-Probe',
-       y = 'RT (ms)',
-       fill = 'Cue-Probe',
-       shape = 'Cue-Probe') +
-  scale_y_continuous(limits = c(0.1, 0.7),
-                     breaks = seq(0.1, 0.7, 0.1),
-                     labels = seq(100, 700, 100)) +
-  geom_segment(aes(x = -Inf, y = 0.1, xend = -Inf, yend = 0.7),
-               color = 'black', size = rel(0.5), linetype = 1) +
-  geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf),
-               color = 'black', size = rel(0.5), linetype = 1) +
-  theme(axis.title.x = element_text(color = 'black', size = 12,
-                                    margin = margin(t = 10)),
-        axis.title.y= element_text(color = 'black', size = 12,
-                                   margin = margin(r = 10)),
-        axis.text = element_text(color = 'black', size = 10),
-        panel.background = element_rect(fill = 'white'),
-        strip.text = element_blank(),
-        strip.background = element_blank(),
-        legend.position='bottom',
-        legend.title = element_blank(),
-        legend.text = element_text(size = 10),
-        panel.spacing = unit(1, "lines")); rt_plot
-# save to disk
-ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
-       plot = rt_plot, width = 4, height = 5, dpi = 300)
-
-#
 ## create the plot
 #rt_plot <- ggplot(data = m_rt,
 #                  aes(x = block, y = m,
@@ -231,15 +198,15 @@ getPacks(c('lme4', 'car',
            'tidyr'))
 
 # summarise to the level of trial types by block
-corrects <- corrects %>%
+corrects_for_mod <- corrects %>%
   group_by(subject, probe) %>%
   summarise(m_rt = mean(w_rt))
 
 # transform variables to factors
-corrects$probe <- as.factor(corrects$probe)
+corrects_for_mod$probe <- as.factor(corrects_for_mod$probe)
 # corrects$block <- as.factor(corrects$block)
 
-rt_mod <- lmer(data = corrects,
+rt_mod <- lmer(data = corrects_for_mod,
                m_rt ~ probe + (1|subject),
                contrasts = list(probe = 'contr.sum'))
 # anova for model
