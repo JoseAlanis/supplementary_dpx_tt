@@ -44,11 +44,11 @@ set_path()
 
 # --- 2) Define workflow funktions  --------------------------------------------
 # Source function for fast requiring and installing packages
-source('./r_functions/getPacks.R')
+source('../../r_functions/pkgcheck.R')
 
 # # If missing, get it from jose's gists
 # devtools::source_gist('https://gist.github.com/JoseAlanis/86da75bf223e10344b7c16791f45bafe', 
-#                       filename = 'getPacks.R')
+#                       filename = 'pkgcheck.R')
 
 # # Define other paths if necessary
 # project_path <- '/Volumes/TOSHIBA/manuscrips_and_data/dpx_tt/'

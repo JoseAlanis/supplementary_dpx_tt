@@ -45,12 +45,12 @@ set_path()
 
 # --- 2) Define workflow funktions  --------------------------------------------
 # Source function for fast requiring and installing packages
-source('./r_functions/getPacks.R')
+source('../r_functions/pkgcheck.R')
 source('./r_functions/stdResid.R')
 
 # # If missing, get it from jose's gists
 # devtools::source_gist('https://gist.github.com/JoseAlanis/86da75bf223e10344b7c16791f45bafe', 
-#                       filename = 'getPacks.R')
+#                       filename = 'pkgcheck.R')
 
 # Standard error function (controls for NAs)
 stderr <- function(x) sqrt(var(x,na.rm=TRUE)/length(na.omit(x)))

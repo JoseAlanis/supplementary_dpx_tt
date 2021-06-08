@@ -5,7 +5,7 @@
 # R version : 4.0.2 (2020-06-22), Taking Off Again
 
 # source function for fast loading and installing of packages
-source('./r_functions/getPacks.R')
+source('./r_functions/pkgcheck.R')
 source('./r_functions/spr2.R')
 
 # 1) define the path to behavioral data directory -----------------------------
@@ -29,7 +29,7 @@ if (check_sys) {
 
 # 2) import in the data -------------------------------------------------------
 # this part requires the package 'dplyr'
-getPacks('dplyr')
+pkgcheck('dplyr')
 
 # files in dir
 rt_files <- list.files(path = paste(path_to_rt, 'rt', sep = '/'),
@@ -50,6 +50,7 @@ rt_df <- rt_df %>% filter(!subject == 51)
 
 
 # 3) exploratory analyses correct reactions -----------------------------------
+pkgcheck('psych')
 
 # extract trials with correct reponses
 corrects <- rt_df %>%
@@ -62,7 +63,6 @@ summary(corrects); unique(corrects$probe)
 
 # get rid of extreme values, e.g., rt values very close to 0
 # using winsorsed scores
-getPacks('psych')
 corrects <- corrects %>%
   group_by(subject, probe) %>%
   mutate(w_rt = winsor(rt, trim = 0.05))
@@ -103,7 +103,7 @@ corrects %>%
   as.data.frame()
 
 # *** plot distribution of reaction time ***
-getPacks(c('ggplot2', 'ggbeeswarm', 'viridis', 'Hmisc', 'see'))
+pkgcheck(c('ggplot2', 'ggbeeswarm', 'viridis', 'Hmisc', 'see'))
 
 # prepare data for plot
 m_rt <- corrects %>%
@@ -131,11 +131,11 @@ rt_plot <- ggplot(data = m_rt,
                color = 'black', size = rel(0.5), linetype = 1) +
   geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf),
                color = 'black', size = rel(0.5), linetype = 1) +
-  theme(axis.title.x = element_text(color = 'black', size = 12, face = 'bold',
-                                    margin = margin(t = 10)),
-        axis.title.y= element_text(color = 'black', size = 12, face = 'bold',
-                                   margin = margin(r = 10)),
-        axis.text = element_text(color = 'black', size = 10),
+  theme(axis.title.x = element_text(color = 'black', size = 16, face = 'bold',
+                                    family = 'Mukta', margin = margin(t = 10)),
+        axis.title.y= element_text(color = 'black', size = 16, face = 'bold',
+                                   family = 'Mukta', margin = margin(r = 10)),
+        axis.text = element_text(color = 'black', size = 14, family = 'Mukta'),
         panel.background = element_rect(fill = 'white'),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid',
                                 colour = "gray97"),
@@ -145,55 +145,15 @@ rt_plot <- ggplot(data = m_rt,
         strip.background = element_blank(),
         legend.position='bottom',
         legend.title = element_blank(),
-        legend.text = element_text(size = 10),
-        panel.spacing = unit(1, "lines")) +
-  coord_flip(); rt_plot
+        legend.text = element_text(size = 12, family = 'Mukta'),
+        panel.spacing = unit(1, "lines")); rt_plot
 # save to disk
-ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
-       plot = rt_plot, width = 5, height = 5, dpi = 300)
-
-## create the plot
-#rt_plot <- ggplot(data = m_rt,
-#                  aes(x = block, y = m,
-#                      fill = probe, shape = block)) +
-#  facet_wrap(~ probe, ncol = 4, scales = 'free_y') +
-#  geom_line(aes(group = subject), position = pjd, alpha = 0.25, size = 0.33,
-#            color='black') +
-#  geom_jitter(position = pjd, size = 1.75, color='black', alpha = 0.25) +
-#  stat_summary(fun.data = "mean_cl_boot", position = pn,
-#               fun.args = list(B = 10000, conf.int = 0.99), size = 0.8) +
-#  scale_fill_viridis(discrete = T, end = .95) +
-#  scale_shape_manual(values = c(21, 23), guide = FALSE) +
-#  labs(x = 'Cue-Probe',
-#       y = 'RT (sec)',
-#       color = F) +
-#  guides(fill = guide_legend(override.aes = list(shape = 21))) +
-#  scale_y_continuous(limits = c(0.1, 0.7),
-#                     breaks = seq(0.1, 0.7, 0.1)) +
-#  geom_segment(aes(x = -Inf, y = 0.1, xend = -Inf, yend = 0.7),
-#               color = 'black', size = rel(0.5), linetype = 1) +
-#  geom_segment(aes(x = 'Block 1', y = -Inf, xend = 'Block 2', yend = -Inf),
-#               color = 'black', size = rel(0.5), linetype = 1) +
-#  theme(axis.title.x = element_text(color = 'black', size = 12,
-#                                    margin = margin(t = 10)),
-#        axis.title.y= element_text(color = 'black', size = 12,
-#                                   margin = margin(r = 10)),
-#        axis.text = element_text(color = 'black', size = 10),
-#        panel.background = element_rect(fill = 'gray99'),
-#        strip.text = element_blank(),
-#        strip.background = element_blank(),
-#        legend.position='bottom',
-#        legend.title = element_blank(),
-#        legend.text = element_text(size = 10),
-#        panel.spacing = unit(1, "lines")); rt_plot
-## save to disk
-#ggsave(filename = '../data/derivatives/results/figures/rt_distribution.pdf',
-#       plot = rt_plot, width = 7.5, height = 5, dpi = 300)
-
+ggsave(filename = '../data/derivatives/results/figures/rt_distribution.png',
+       plot = rt_plot, width = 4, height = 5, dpi = 600)
 
 # 4) model rt of correct reactions --------------------------------------------
 # this part requires the following packages
-getPacks(c('lme4', 'car',
+pkgcheck(c('lme4', 'car',
            'sjPlot',
            'tidyr'))
 
@@ -212,7 +172,7 @@ rt_mod <- lmer(data = corrects_for_mod,
 # anova for model
 rt_anova <- car::Anova(rt_mod, test = 'F', type = 'III'); rt_anova
 # semi-partial R-squared for predictors
-spr2 <- spR2(rt_anova)
+spr2 <- spR2(rt_anova); spr2
 
 # create a teble of the model summary
 tab_model(rt_mod, digits = 3,
@@ -230,7 +190,7 @@ tab_df(title = 'Anova RT Model',
 
 # 5) interaction analysis for rt data -----------------------------------------
 # this section requires the following packages
-getPacks(c('emmeans', 'ggplot2', 'dplyr',  'tidyr'))
+pkgcheck(c('emmeans', 'ggplot2', 'dplyr',  'tidyr'))
 
 # levels of the probe variable by block (e.g. AX in block 0 = AX 0)
 #probe_levels <- c('AX Block 1', 'AY Block 1', 'BX Block 1', 'BY Block 1',
@@ -316,48 +276,8 @@ contrast_plot <- ggplot(es, aes(contrast, effect.size)) +
 ggsave(filename = '../data/derivatives/results/figures/contrast_rt_plot.pdf',
        plot = contrast_plot, width = 6, height = 3)
 
-
-## create the plot
-#pw_rt_plot <- ggplot(rt_means_df, aes(var1, var2)) +
-#  geom_tile(fill = 'white') +
-#  geom_text(aes(label = round(emmean, 2)), size = 5,
-#            vjust = -.05) +
-#  geom_text(aes(label = paste(round(lower.CL, 2),
-#                              round(upper.CL, 2),
-#                              sep = ' - ')),
-#            vjust = 2.5, size = 2.75) +
-#  geom_tile(data = es, aes(var1, var2, fill=effect.size),
-#            colour = 'white', size = 0.8) +
-#  geom_text(data = es, aes(var1, var2, label = sig),
-#            colour = 'black', size = 7,  vjust = 1) +
-#  # scale_fill_viridis(option = 'B', limits = c(-0.5, 0.5)) +
-#  scale_fill_distiller(palette = "RdBu", limits = c(-5.0, 5.0),
-#                       breaks = seq(-5.0, 5.0, 2.5)) +
-#  geom_segment(aes(x = -Inf, y = 'AX Block 1',
-#                   xend = -Inf, yend = 'BY Block 2'),
-#               color = 'black', size = rel(0.5), linetype = 1) +
-#  geom_segment(aes(x = 'AX Block 1', y = -Inf,
-#                   xend = 'BY Block 2', yend = -Inf),
-#               color = 'black', size = rel(0.5), linetype = 1) +
-#  labs(x = 'Trial type by block', y = 'Trial type by block',
-#       fill = "Difference (Cohen's D)") +
-#  theme(axis.title.x = element_text(color = 'black', size = 16,
-#                                    margin = margin(t = 10)),
-#        axis.title.y= element_text(color = 'black', size = 16,
-#                                   margin = margin(r = 10)),
-#        axis.text.y = element_text(color = 'black', size = 14),
-#        axis.text.x = element_text(color = 'black', size = 14, angle = 45,
-#                                   hjust = 1),
-#        panel.background = element_rect(fill = 'gray97'),
-#        strip.text = element_blank(),
-#        strip.background = element_blank(),
-#        legend.position='bottom',
-#        panel.spacing = unit(1, "lines")) +
-#  coord_flip(); pw_rt_plot
-
-
 # 6) exploratory analysis of error rates --------------------------------------
-getPacks('dplyr')
+pkgcheck('dplyr')
 
 # compute number of trials per condition
 total <- rt_df %>%
@@ -396,8 +316,53 @@ errors %>% group_by(trial_type) %>%
 # errors %>% group_by(block, trial_type) %>%
 #   summarise(m = mean(error_rate), sd = sd(error_rate))
 
+# *** plot distribution of reaction error rates ***
+pkgcheck(c('ggplot2', 'ggbeeswarm', 'viridis', 'Hmisc', 'see'))
+pn <- position_nudge(x = 0.3)
+pd <- position_jitter(0.15)
+err_plot <- ggplot(data = errors,
+                  aes(x = trial_type, y = error_rate,
+                      fill = trial_type, shape = trial_type)) +
+  geom_jitter(size = 2, position = pd) +
+  # geom_beeswarm(size = 2, show.legend = T, priority='random') +
+  geom_violinhalf(position = pn, width = 0.75, alpha = 0.5, show.legend = F) +
+  geom_boxplot(position = pn, width = 0.10, alpha = 1.0, outlier.shape = NA,
+               show.legend = F) +
+  scale_shape_manual(values = c(21, 23, 24, 25)) +
+  # scale_y_continuous(limits = c(0.0, 0.8),
+  #                    breaks = seq(0.0, 0.8, 0.2),
+  #                    labels = seq(0.0, 0.8, 0.2)) +
+  scale_fill_brewer(palette = 'Set2') +
+  # scale_fill_viridis(option = 'E', discrete = T, begin = 0.15, end = 0.9) +
+  labs(x = 'Cue-Probe Combination',
+       y = 'Error Rate') +
+  geom_segment(aes(x = -Inf, y = 0.0, xend = -Inf, yend = 0.8),
+               color = 'black', size = rel(0.5), linetype = 1) +
+  geom_segment(aes(x = 'AX', y = -Inf, xend = 'BY', yend = -Inf),
+               color = 'black', size = rel(0.5), linetype = 1) +
+  theme(axis.title.x = element_text(color = 'black', size = 16, face = 'bold',
+                                    family = 'Mukta', margin = margin(t = 10)),
+        axis.title.y= element_text(color = 'black', size = 16, face = 'bold',
+                                   family = 'Mukta', margin = margin(r = 10)),
+        axis.text = element_text(color = 'black', size = 14, family = 'Mukta'),
+        panel.background = element_rect(fill = 'white'),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "gray97"),
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "gray97"),
+        strip.text = element_blank(),
+        strip.background = element_blank(),
+        legend.position='bottom',
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12, family = 'Mukta'),
+        panel.spacing = unit(1, "lines")); err_plot
+# save to disk
+ggsave(filename = '../data/derivatives/results/figures/errors_distribution.png',
+       plot = err_plot, width = 4, height = 5, dpi = 600)
+
+
 # plot distribution of error rates
-getPacks(c('ggplot2', 'viridis'))
+pkgcheck(c('ggplot2', 'viridis'))
 pjd <- position_jitterdodge(
   jitter.width = 0.5,
   jitter.height = 0,
@@ -582,7 +547,7 @@ ggsave(filename = '../data/derivatives/results/figures/pairwise_error_plot.pdf',
 
 # 9) compute proactive control measures ---------------------------------------
 
-n_corrects <-rt_df %>%
+n_corrects < -rt_df %>%
   mutate(probe =
            ifelse(nchar(probe) > 1, substr(probe, 2, 2), probe),
          trial_type = paste0(cue, probe)) %>%
